@@ -47,7 +47,7 @@ if not os.path.exists(cnn_model_path):
     download_file(cnn_model_url, cnn_model_path)
 
 # Load models
-@st.cache_resource
+@st.cache(allow_output_mutation=True)
 def load_models():
     try:
         rf_model = joblib.load(rf_model_path)
