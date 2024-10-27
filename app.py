@@ -18,8 +18,8 @@ def download_file(url, dest):
         return False
 
 # URLs for the model files
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/genai_stacking_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/cnn_model.h5'
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Local paths for the model files
 stacking_model_path = 'genai_stacking_model.pkl'
@@ -42,7 +42,7 @@ except Exception as e:
     st.error(f"Error loading models: {e}")
 
 # Load the dataset
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/frmgham2.csv'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 try:
     data = pd.read_csv(data_url)
 except Exception as e:
@@ -62,7 +62,7 @@ feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
 st.sidebar.header('Enter your parameters')
 
 def user_input_features():
-    age = st.sidebar.slider('Enter your age:', 32, 81, 54)
+    age = st.sidebar.slider('Enter your age:', 32, 81, 50)
     totchol = st.sidebar.slider('Total Cholesterol:', 107, 696, 200)
     sysbp = st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151)
     diabp = st.sidebar.slider('Diastolic Blood Pressure:', 30, 150, 89)
