@@ -3,7 +3,6 @@ import pandas as pd
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model
 from sklearn.metrics import roc_curve, roc_auc_score
 import os
 import urllib.request
@@ -18,70 +17,42 @@ def download_file(url, dest):
         return False
 
 # URLs for the model files
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_model.pkl'
 
 # Local paths for the model files
-stacking_model_path = 'genai_stacking_model.pkl'
-cnn_model_path = 'cnn_model.h5'
+stacking_model_path = 'stacking_model.pkl'
 
 # Download the models if not already present
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-if not os.path.exists(cnn_model_path):
-    st.info(f"Downloading {cnn_model_path}...")
-    download_file(cnn_model_url, cnn_model_path)
-
-# Load the stacking model and CNN model
+# Load the stacking model
 try:
     stacking_model = joblib.load(stacking_model_path)
-    cnn_model = load_model(cnn_model_path)
+    if not hasattr(stacking_model, 'predict_proba'):
+        st.error("Loaded model does not have the required methods. Please check the model file.")
 except Exception as e:
     st.error(f"Error loading models: {e}")
-
-try:
-    stacking_model = joblib.load(stacking_model_path)
-    st.write(f"Loaded model type: {type(stacking_model)}")
-except Exception as e:
-    st.error(f"Error loading models: {e}")
-
-try:
-    stacking_model_dict = joblib.load(stacking_model_path)
-    # Assuming the actual model is stored under a specific key, adjust as needed
-    stacking_model = stacking_model_dict.get('model')  # replace 'model' with the correct key if necessary
-except Exception as e:
-    st.error(f"Error loading models: {e}")
-
+    stacking_model = None
 
 # Load the dataset
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/frmgham2.csv'
 try:
     data = pd.read_csv(data_url)
+    data.fillna(data.mean(), inplace=True)  # Handle missing values
 except Exception as e:
     st.error(f"Error loading data: {e}")
-
-# Handle missing values by replacing them with the mean of the respective columns
-if 'data' in locals():
-    data.dropna(inplace=True)
-    # data.fillna(data.mean(), inplace=True)
-
-if hasattr(stacking_model, 'named_estimators_'):
-    rf_base_model = stacking_model.named_estimators_['rf']
-elif isinstance(stacking_model, dict) and 'rf' in stacking_model:
-    rf_base_model = stacking_model['rf']  # Adjust based on how models are stored in the dictionary
+    data = None
 
 # Define the feature columns
-feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
-                   'GLUCOSE', 'DIABETES', 'HEARTRTE', 'CIGPDAY', 'BPMEDS',
-                   'STROKE', 'HYPERTEN', 'LDLC', 'HDLC']
+feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE', 'GLUCOSE', 'DIABETES', 
+                   'HEARTRTE', 'CIGPDAY', 'BPMEDS', 'STROKE', 'HYPERTEN']
 
 # Sidebar for input parameters
 st.sidebar.header('Enter your parameters')
-
 def user_input_features():
-    age = st.sidebar.slider('Enter your age:', 32, 81, 50)
+    age = st.sidebar.slider('Enter your age:', 32, 81, 54)
     totchol = st.sidebar.slider('Total Cholesterol:', 107, 696, 200)
     sysbp = st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151)
     diabp = st.sidebar.slider('Diastolic Blood Pressure:', 30, 150, 89)
@@ -94,84 +65,59 @@ def user_input_features():
     bpmeds = st.sidebar.selectbox('On BP Meds:', (0, 1))
     stroke = st.sidebar.selectbox('Stroke:', (0, 1))
     hyperten = st.sidebar.selectbox('Hypertension:', (0, 1))
-    ldlc = st.sidebar.slider('LDLC:', 20, 565, 150)
-    hdlc = st.sidebar.slider('HDLC:', 10, 189, 55)
 
     data = {
-        'AGE': age,
-        'TOTCHOL': totchol,
-        'SYSBP': sysbp,
-        'DIABP': diabp,
-        'BMI': bmi,
-        'CURSMOKE': cursmoke,
-        'GLUCOSE': glucose,
-        'DIABETES': diabetes,
-        'HEARTRTE': heartrate,
-        'CIGPDAY': cigpday,
-        'BPMEDS': bpmeds,
-        'STROKE': stroke,
-        'HYPERTEN': hyperten,
-        'LDLC': ldlc,
-        'HDLC': hdlc
+        'AGE': age, 'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 
+        'CURSMOKE': cursmoke, 'GLUCOSE': glucose, 'DIABETES': diabetes, 'HEARTRTE': heartrate, 
+        'CIGPDAY': cigpday, 'BPMEDS': bpmeds, 'STROKE': stroke, 'HYPERTEN': hyperten
     }
-    features = pd.DataFrame(data, index=[0])
-    return features
+    return pd.DataFrame(data, index=[0])
 
 input_df = user_input_features()
 
 # Apply the model to make predictions
-if st.sidebar.button('Predict'):
+if stacking_model and st.sidebar.button('PREDICT NOW'):
     try:
-        # Get prediction probabilities from the stacking model
         stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
     except Exception as e:
         st.error(f"Error making predictions: {e}")
 
-    st.write("""
-    # Cardiovascular Disease Prediction App
-    This app predicts the probability of cardiovascular disease (CVD) using user inputs.
-    """)
-
-    st.subheader('Predictions')
-    try:
-        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
-    except:
-        pass
-
-    # Plot the prediction probability distribution
+    # Prediction Probability Distribution
     st.subheader('Prediction Probability Distribution')
     try:
         fig, ax = plt.subplots()
-        bars = ax.bar(['Stacking Model'], [stacking_proba[0]], color=['blue'])
+        ax.bar(['Stacking Model'], [stacking_proba[0]], color=['blue'])
         ax.set_ylim(0, 1)
         ax.set_ylabel('Probability')
-        for bar in bars:
-            yval = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:.2f}', va='bottom')  # va: vertical alignment
+        ax.text(0, stacking_proba[0], f'{stacking_proba[0]:.2f}', ha='center', va='bottom')
         st.pyplot(fig)
-    except:
-        pass
+    except Exception as e:
+        st.error(f"Error plotting probability distribution: {e}")
 
-    # Plot feature importances for Random Forest
+    # Feature Importances (Random Forest)
     st.subheader('Feature Importances (Random Forest)')
     try:
-        rf_base_model = stacking_model.named_estimators_['rf']  # Assuming 'rf' is the RandomForest key in your stacking model
-        fig, ax = plt.subplots()
-        importances = rf_base_model.feature_importances_
-        indices = np.argsort(importances)
-        ax.barh(range(len(indices)), importances[indices], color='blue', align='center')
-        ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels([feature_columns[i] for i in indices])
-        ax.set_xlabel('Importance')
-        st.pyplot(fig)
+        rf_model = stacking_model.named_estimators_.get('rf')
+        if rf_model:
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)
+            fig, ax = plt.subplots()
+            ax.barh(range(len(indices)), importances[indices], color='blue')
+            ax.set_yticks(range(len(indices)))
+            ax.set_yticklabels([feature_columns[i] for i in indices])
+            ax.set_xlabel('Importance')
+            st.pyplot(fig)
+        else:
+            st.error("Random Forest model not found in the stacking model.")
     except Exception as e:
         st.error(f"Error plotting feature importances: {e}")
 
-    # Plot ROC curve for the stacking model
+    # ROC Curve
     st.subheader('Model Performance')
     try:
-        fig, ax = plt.subplots()
         fpr, tpr, _ = roc_curve(data['CVD'], stacking_model.predict_proba(data[feature_columns])[:, 1])
+        fig, ax = plt.subplots()
         ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(data["CVD"], stacking_model.predict_proba(data[feature_columns])[:, 1]):.2f})')
         ax.plot([0, 1], [0, 1], 'k--')
         ax.set_xlabel('False Positive Rate')
@@ -182,5 +128,5 @@ if st.sidebar.button('Predict'):
     except Exception as e:
         st.error(f"Error plotting ROC curve: {e}")
 else:
-    st.write("## Cardiovascular Disease Prediction by Gen AI, Howard Nguyen")
+    st.write("## Cardiovascular Disease Prediction App")
     st.write("### Enter your parameters and click Predict to get the results.")
