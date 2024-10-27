@@ -22,8 +22,8 @@ stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main
 cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Local paths for the model files
-stacking_model_path = 'genai_stacking_model.pkl'
-cnn_model_path = 'cnn_model.h5'
+stacking_model_path = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+cnn_model_path = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Download the models if not already present
 if not os.path.exists(stacking_model_path):
