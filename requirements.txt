@@ -6,3 +6,4 @@ matplotlib
 tensorflow  # or tensorflow-cpu if GPU isn't necessary
 scikit-learn
 xgboost
+altair==4.2.0
