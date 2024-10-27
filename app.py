@@ -50,7 +50,8 @@ except Exception as e:
 
 # Handle missing values by replacing them with the mean of the respective columns
 if 'data' in locals():
-    data.fillna(data.mean(), inplace=True)
+    data.dropna(inplace=True)
+    # data.fillna(data.mean(), inplace=True)
 
 # Define the feature columns
 feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
