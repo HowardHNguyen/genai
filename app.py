@@ -22,8 +22,8 @@ stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main
 cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Local paths for the model files
-stacking_model_path = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
-cnn_model_path = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
+stacking_model_path = 'genai_stacking_model.pkl'
+cnn_model_path = 'cnn_model.h5'
 
 # Download the models if not already present
 if not os.path.exists(stacking_model_path):
@@ -41,6 +41,20 @@ try:
 except Exception as e:
     st.error(f"Error loading models: {e}")
 
+try:
+    stacking_model = joblib.load(stacking_model_path)
+    st.write(f"Loaded model type: {type(stacking_model)}")
+except Exception as e:
+    st.error(f"Error loading models: {e}")
+
+try:
+    stacking_model_dict = joblib.load(stacking_model_path)
+    # Assuming the actual model is stored under a specific key, adjust as needed
+    stacking_model = stacking_model_dict.get('model')  # replace 'model' with the correct key if necessary
+except Exception as e:
+    st.error(f"Error loading models: {e}")
+
+
 # Load the dataset
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 try:
@@ -52,6 +66,11 @@ except Exception as e:
 if 'data' in locals():
     data.dropna(inplace=True)
     # data.fillna(data.mean(), inplace=True)
+
+if hasattr(stacking_model, 'named_estimators_'):
+    rf_base_model = stacking_model.named_estimators_['rf']
+elif isinstance(stacking_model, dict) and 'rf' in stacking_model:
+    rf_base_model = stacking_model['rf']  # Adjust based on how models are stored in the dictionary
 
 # Define the feature columns
 feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
