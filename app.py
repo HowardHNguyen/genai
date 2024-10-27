@@ -1,24 +1,65 @@
-# app.py
 import streamlit as st
-import joblib
 import pandas as pd
+import joblib
 import numpy as np
-from sklearn.metrics import roc_curve, roc_auc_score
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import LogisticRegression
+import os
+import urllib.request
 
-# Load the complete stacking model
-@st.cache_resource
+# Function to download the file
+def download_file(url, dest):
+    try:
+        urllib.request.urlretrieve(url, dest)
+        return True
+    except Exception as e:
+        st.error(f"Error downloading {url}: {e}")
+        return False
+
+# URLs for the model files
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
+
+# Local paths for the model files
+stacking_model_path = 'genai_stacking_model.pkl'
+
+# Download the models if not already present
+if not os.path.exists(stacking_model_path):
+    st.info(f"Downloading {stacking_model_path}...")
+    download_file(stacking_model_url, stacking_model_path)
+
+# Load the stacking model
+@st.cache(allow_output_mutation=True)
 def load_stacking_model():
     try:
-        stacking_model = joblib.load('genai_stacking_model.pkl')
-        return stacking_model
+        return joblib.load(stacking_model_path)
     except Exception as e:
-        st.error(f"Error loading the stacking model: {e}")
+        st.error(f"Error loading model: {e}")
         return None
 
 stacking_model = load_stacking_model()
 
-# Sidebar inputs for user parameters
+# Load the dataset
+@st.cache(allow_output_mutation=True)
+def load_data():
+    try:
+        data = pd.read_csv(data_url)
+        data.fillna(data.mean(), inplace=True)
+        return data
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
+
+data = load_data()
+
+# Define the feature columns
+feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
+                   'GLUCOSE', 'DIABETES', 'HEARTRTE', 'CIGPDAY', 'BPMEDS',
+                   'STROKE', 'HYPERTEN', 'PREVHYP', 'LDLC', 'HDLC']
+
+# Sidebar for input parameters
 st.sidebar.header('Enter your parameters')
 
 def user_input_features():
@@ -36,8 +77,8 @@ def user_input_features():
     stroke = st.sidebar.selectbox('Stroke:', (0, 1))
     hyperten = st.sidebar.selectbox('Hypertension:', (0, 1))
     prevhyp = st.sidebar.selectbox('Previous Hypertension:', (0, 1))
-    ldlc = st.sidebar.slider('LDL Cholesterol:', 20, 565, 100)
-    hdlc = st.sidebar.slider('HDL Cholesterol:', 10, 189, 50)
+    ldlc = st.sidebar.slider('LDLC:', 10, 189, 130)
+    hdlc = st.sidebar.slider('HDLC:', 20, 565, 50)
 
     data = {
         'AGE': age,
@@ -57,60 +98,60 @@ def user_input_features():
         'LDLC': ldlc,
         'HDLC': hdlc
     }
-    return pd.DataFrame(data, index=[0])
+    features = pd.DataFrame(data, index=[0])
+    return features
 
 input_df = user_input_features()
 
-# Display predictions on clicking Predict button
-if st.sidebar.button('Predict') and stacking_model is not None:
+# Apply the model to make predictions
+if st.sidebar.button('Predict'):
     try:
-        # Predict using stacking model
-        stacking_proba = stacking_model.predict_proba(input_df)
+        stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+        st.write("## Cardiovascular Disease Prediction App")
         st.subheader('Predictions')
-        st.write(f"Stacking Model Prediction: CVD probability {stacking_proba[0, 1]:.2f}")
-        
-        # Display Probability Distribution
-        st.subheader('Prediction Probability Distribution')
-        fig, ax = plt.subplots()
-        ax.bar(['Stacking Model'], [stacking_proba[0, 1]], color='blue')
-        ax.set_ylim(0, 1)
-        st.pyplot(fig)
-
+        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
     except Exception as e:
         st.error(f"Error making predictions: {e}")
 
-    # Feature Importances from XGBoost
+    # Plot prediction probability distribution
+    st.subheader('Prediction Probability Distribution')
+    try:
+        fig, ax = plt.subplots()
+        ax.bar(['Stacking Model'], [stacking_proba[0]], color=['blue'])
+        ax.set_ylim(0, 1)
+        ax.set_ylabel('Probability')
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Error plotting probability distribution: {e}")
+
+    # Plot feature importances for XGBoost
     st.subheader('Feature Importances (XGBoost)')
     try:
-        xgb_model = stacking_model.named_estimators_['xgb']  # Access the XGBoost model
+        xgb_model = stacking_model.named_estimators_['xgb']  # Access XGBoost model in stack
         importances = xgb_model.feature_importances_
-        indices = np.argsort(importances)
-
         fig, ax = plt.subplots()
+        indices = np.argsort(importances)
         ax.barh(range(len(indices)), importances[indices], color='blue', align='center')
         ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels([input_df.columns[i] for i in indices])
+        ax.set_yticklabels([feature_columns[i] for i in indices])
         ax.set_xlabel('Importance')
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Error plotting feature importances: {e}")
 
-    # Model Performance (ROC Curve)
+    # Plot ROC curve for the model
     st.subheader('Model Performance')
     try:
+        fpr, tpr, _ = roc_curve(data['CVD'], stacking_model.predict_proba(data[feature_columns])[:, 1])
         fig, ax = plt.subplots()
-        # Assuming the full data and labels are available as `X_full` and `y_full`
-        # fpr, tpr, _ = roc_curve(y_full, stacking_model.predict_proba(X_full)[:, 1])
-        # ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(y_full, stacking_model.predict_proba(X_full)[:, 1]):.2f})')
+        ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(data["CVD"], stacking_model.predict_proba(data[feature_columns])[:, 1]):.2f})')
         ax.plot([0, 1], [0, 1], 'k--')
         ax.set_xlabel('False Positive Rate')
         ax.set_ylabel('True Positive Rate')
-        ax.set_title('ROC Curve')
         ax.legend(loc='best')
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Error plotting ROC curve: {e}")
-
 else:
     st.write("## Cardiovascular Disease Prediction App")
     st.write("### Enter your parameters and click Predict to get the results.")
