@@ -45,10 +45,7 @@ def load_stacking_model():
     except Exception as e:
         return None, f"Error loading model: {e}"
 
-model_loading_result = load_stacking_model()
-stacking_model = model_loading_result[0]
-loading_error = model_loading_result[1]
-
+stacking_model, loading_error = load_stacking_model()
 if loading_error:
     st.error(loading_error)
 
@@ -126,6 +123,7 @@ if st.sidebar.button('Predict'):
 
             # ROC Curve
             st.subheader('Model Performance')
+            # Checking the prediction output for dimensions and values
             predictions = stacking_model.predict_proba(data[feature_columns])[:, 1]
             fpr, tpr, _ = roc_curve(data['CVD'], predictions)
             auc_score = roc_auc_score(data['CVD'], predictions)
