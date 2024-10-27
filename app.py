@@ -31,15 +31,16 @@ if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
 # Load the stacking model
-@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_stacking_model():
     try:
         return joblib.load(stacking_model_path)
     except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+        return None, f"Error loading model: {e}"
 
-stacking_model = load_stacking_model()
+stacking_model, loading_error = load_stacking_model()
+if loading_error:
+    st.error(loading_error)
 
 # Load the dataset
 @st.cache(allow_output_mutation=True)
@@ -105,13 +106,16 @@ input_df = user_input_features()
 
 # Apply the model to make predictions
 if st.sidebar.button('Predict'):
-    try:
-        stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
-        st.write("## Cardiovascular Disease Prediction App")
-        st.subheader('Predictions')
-        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
-    except Exception as e:
-        st.error(f"Error making predictions: {e}")
+    if stacking_model is not None:
+        try:
+            stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+            st.write("## Cardiovascular Disease Prediction App")
+            st.subheader('Predictions')
+            st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
+        except Exception as e:
+            st.error(f"Error making predictions: {e}")
+    else:
+        st.error("Model could not be loaded.")
 
     # Plot prediction probability distribution
     st.subheader('Prediction Probability Distribution')
