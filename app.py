@@ -126,9 +126,12 @@ if st.sidebar.button('Predict'):
 
             # ROC Curve
             st.subheader('Model Performance')
-            fpr, tpr, thresholds = roc_curve(data['CVD'], stacking_model.predict_proba(data[feature_columns])[:, 1])
+            predictions = stacking_model.predict_proba(data[feature_columns])[:, 1]
+            fpr, tpr, _ = roc_curve(data['CVD'], predictions)
+            auc_score = roc_auc_score(data['CVD'], predictions)
+            
             fig, ax = plt.subplots()
-            ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(data["CVD"], stacking_model.predict_proba(data[feature_columns])[:, 1]):.2f})')
+            ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {auc_score:.2f})')
             ax.plot([0, 1], [0, 1], 'k--')
             ax.set_xlabel('False Positive Rate')
             ax.set_ylabel('True Positive Rate')
