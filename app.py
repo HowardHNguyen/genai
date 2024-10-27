@@ -69,9 +69,8 @@ def load_data():
 data = load_data()
 
 # Define the feature columns
-feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
-                   'GLUCOSE', 'DIABETES', 'HEARTRTE', 'CIGPDAY', 'BPMEDS',
-                   'STROKE', 'HYPERTEN', 'PREVHYP', 'LDLC', 'HDLC']
+feature_columns = ['STROKE', 'SYSBP', 'AGE', 'PREVHYP', 'HYPERTEN', 'DIABP', 'DIABETES', 'BPMEDS', 
+                   'BMI', 'GLUCOSE', 'TOTCHOL', 'CIGPDAY', 'LDLC', 'CURSMOKE', 'HEARTRTE', 'HDLC']
 
 # Sidebar for input parameters
 st.sidebar.header('Enter your parameters')
