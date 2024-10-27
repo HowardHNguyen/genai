@@ -1,7 +1,8 @@
-streamlit==1.35.0
-numpy==1.25.2
-pandas==2.0.3
-scikit-learn==1.2.2
-matplotlib==3.7.1
-joblib==1.4.2
-tensorflow==2.15.0
+streamlit==1.11.1
+pandas
+joblib
+numpy
+matplotlib
+tensorflow  # or tensorflow-cpu if GPU isn't necessary
+scikit-learn
+xgboost
