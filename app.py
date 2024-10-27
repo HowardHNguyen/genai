@@ -46,7 +46,8 @@ if not os.path.exists(stacking_model_path):
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_stacking_model():
     try:
-        return joblib.load(stacking_model_path)
+        model = joblib.load(stacking_model_path)
+        return model, None
     except Exception as e:
         return None, f"Error loading model: {e}"
 
