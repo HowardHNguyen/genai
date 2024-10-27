@@ -6,8 +6,20 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.ensemble import StackingClassifier
 from sklearn.linear_model import LogisticRegression
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv1D, Flatten
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 import os
 import urllib.request
+
+# Define the CNN model architecture function
+def create_cnn_model(input_shape=(16, 1)):
+    model = Sequential()
+    model.add(Conv1D(32, 3, activation='relu', input_shape=input_shape))
+    model.add(Flatten())
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
 
 # Function to download the file
 def download_file(url, dest):
