@@ -117,6 +117,9 @@ def user_input_features():
 
 input_df = user_input_features()
 
+# Ensure input_df columns match feature_columns order
+input_df = input_df[feature_columns]
+
 # Apply the model to make predictions
 if st.sidebar.button('Predict'):
     if stacking_model is not None:
