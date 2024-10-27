@@ -27,14 +27,22 @@ if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-# Load the stacking model
+# Load the stacking model with a more robust check
+stacking_model = None
 try:
-    stacking_model = joblib.load(stacking_model_path)
-    if not hasattr(stacking_model, 'predict_proba'):
-        st.error("Loaded model does not have the required methods. Please check the model file.")
+    model_obj = joblib.load(stacking_model_path)
+    
+    # Check if it's a model with predict_proba
+    if hasattr(model_obj, "predict_proba"):
+        stacking_model = model_obj
+    elif isinstance(model_obj, dict) and "stacking_model" in model_obj:
+        # If it's a dictionary, check if it contains the actual model
+        stacking_model = model_obj["stacking_model"]
+    else:
+        st.error("The loaded file does not contain a valid model with the required methods.")
+        
 except Exception as e:
     st.error(f"Error loading model: {e}")
-    stacking_model = None
 
 # Load the dataset
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/frmgham2.csv'
@@ -52,7 +60,7 @@ feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE', 'GLUCO
 # Sidebar for input parameters
 st.sidebar.header('Enter your parameters')
 def user_input_features():
-    age = st.sidebar.slider('Enter your age:', 32, 81, 50)
+    age = st.sidebar.slider('Enter your age:', 32, 81, 54)
     totchol = st.sidebar.slider('Total Cholesterol:', 107, 696, 200)
     sysbp = st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151)
     diabp = st.sidebar.slider('Diastolic Blood Pressure:', 30, 150, 89)
