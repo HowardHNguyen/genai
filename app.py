@@ -7,9 +7,17 @@ from sklearn.metrics import roc_curve, roc_auc_score
 import os
 import urllib.request
 
-# Define feature columns in the correct training order
-feature_columns = ['STROKE', 'SYSBP', 'AGE', 'PREVHYP', 'HYPERTEN', 'DIABP', 'DIABETES', 'BPMEDS', 
-                   'BMI', 'GLUCOSE', 'TOTCHOL', 'CIGPDAY', 'LDLC', 'CURSMOKE', 'HEARTRTE', 'HDLC']
+# Define the CNN model architecture function
+def create_cnn_model(input_shape=(16, 1)):
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv1D, Flatten, Dense
+    
+    model = Sequential()
+    model.add(Conv1D(32, 3, activation='relu', input_shape=input_shape))
+    model.add(Flatten())
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
 
 # URL to download the stacking model
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
@@ -28,22 +36,27 @@ def download_file(url, dest):
 if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
-# Load the stacking model
-@st.cache(allow_output_mutation=True)
+# Load the stacking model with caching
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_stacking_model():
     try:
         model = joblib.load(stacking_model_path)
         return model
     except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+        return None, f"Error loading model: {e}"
 
-stacking_model = load_stacking_model()
+stacking_model, loading_error = load_stacking_model()
+if loading_error:
+    st.error(loading_error)
+
+# Define feature columns
+feature_columns = ['STROKE', 'SYSBP', 'AGE', 'PREVHYP', 'HYPERTEN', 'DIABP', 'DIABETES', 'BPMEDS', 
+                   'BMI', 'GLUCOSE', 'TOTCHOL', 'CIGPDAY', 'LDLC', 'CURSMOKE', 'HEARTRTE', 'HDLC']
 
 # Sidebar for input parameters
 st.sidebar.header('Enter your parameters')
+
 def user_input_features():
-    # Define all input fields as before
     data = {
         'STROKE': st.sidebar.selectbox('Stroke:', (0, 1)),
         'SYSBP': st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151),
@@ -67,7 +80,7 @@ def user_input_features():
 
 input_df = user_input_features()
 
-# Ensure input columns match feature_columns order
+# Ensure input_df columns match feature_columns order
 input_df = input_df[feature_columns]
 
 # Apply the model to make predictions
@@ -76,7 +89,6 @@ if st.sidebar.button('Predict'):
         try:
             # Adjust input for model compatibility
             if 'cnn' in [name for name, _ in stacking_model.estimators]:
-                # CNN expects 3D shape for each sample; reshape accordingly
                 input_data = np.expand_dims(input_df.values, axis=2)
             else:
                 input_data = input_df.values
@@ -94,7 +106,7 @@ if st.sidebar.button('Predict'):
             ax.set_ylabel('Probability')
             st.pyplot(fig)
 
-            # Feature importances (if available)
+            # Feature importances for XGBoost
             st.subheader('Feature Importances (XGBoost)')
             try:
                 xgb_model = stacking_model.named_estimators_['xgb']
