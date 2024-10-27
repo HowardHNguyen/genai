@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.ensemble import StackingClassifier
-from sklearn.linear_model import LogisticRegression
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Conv1D, Flatten
 from scikeras.wrappers import KerasClassifier
@@ -43,7 +42,7 @@ if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
 # Load the stacking model
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+@st.cache_resource(suppress_st_warning=True)
 def load_stacking_model():
     try:
         model = joblib.load(stacking_model_path)
@@ -56,7 +55,7 @@ if loading_error:
     st.error(loading_error)
 
 # Load the dataset
-@st.cache(allow_output_mutation=True)
+@st.cache_data(suppress_st_warning=True)
 def load_data():
     try:
         data = pd.read_csv(data_url)
@@ -123,6 +122,7 @@ input_df = input_df[feature_columns]
 if st.sidebar.button('Predict'):
     if stacking_model is not None:
         try:
+            # Ensure the input shape matches what the model expects
             stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
             st.write("## Cardiovascular Disease Prediction App")
             st.subheader('Predictions')
