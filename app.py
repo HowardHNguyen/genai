@@ -91,10 +91,10 @@ if st.sidebar.button('Predict'):
     if stacking_model:
         try:
             # Adjust input for model compatibility
-            if 'cnn' in [name for name, _ in stacking_model.estimators]:
-                input_data = np.expand_dims(input_df.values, axis=2)
-            else:
-                input_data = input_df.values
+            input_data = input_df.values
+            # Only reshape for CNN models
+            if 'cnn' in [name for name, _ in stacking_model.estimators_]:
+                input_data = np.expand_dims(input_data, axis=2)
 
             # Make prediction
             stacking_proba = stacking_model.predict_proba(input_data)[:, 1]
