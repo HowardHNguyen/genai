@@ -7,11 +7,10 @@ from sklearn.metrics import roc_curve, roc_auc_score
 import os
 import urllib.request
 
-# Define the CNN model architecture function
+# Define CNN model architecture function
 def create_cnn_model(input_shape=(16, 1)):
     from tensorflow.keras.models import Sequential
     from tensorflow.keras.layers import Conv1D, Flatten, Dense
-    
     model = Sequential()
     model.add(Conv1D(32, 3, activation='relu', input_shape=input_shape))
     model.add(Flatten())
@@ -19,11 +18,10 @@ def create_cnn_model(input_shape=(16, 1)):
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return model
 
-# URL to download the stacking model
+# Download model if not already present
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
 stacking_model_path = 'genai_stacking_model.pkl'
 
-# Function to download the model file if not present
 def download_file(url, dest):
     try:
         urllib.request.urlretrieve(url, dest)
@@ -32,11 +30,10 @@ def download_file(url, dest):
         st.error(f"Error downloading {url}: {e}")
         return False
 
-# Download the model if not already present
 if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
-# Load the stacking model with caching
+# Load stacking model with caching
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_stacking_model():
     try:
@@ -79,26 +76,23 @@ def user_input_features():
     return features
 
 input_df = user_input_features()
-
-# Ensure input_df columns match feature_columns order
-input_df = input_df[feature_columns]
+input_df = input_df[feature_columns]  # Ensure the correct feature order
 
 # Apply the model to make predictions
 if st.sidebar.button('Predict'):
     if stacking_model:
         try:
-            # Adjust input for model compatibility
+            # Check if any CNN reshaping is required
             input_data = input_df.values
-            # Only reshape for CNN models
             if 'cnn' in [name for name, _ in stacking_model.estimators_]:
                 input_data = np.expand_dims(input_data, axis=2)
-
-            # Make prediction
+            
+            # Generate prediction probabilities
             stacking_proba = stacking_model.predict_proba(input_data)[:, 1]
             st.subheader('Predictions')
             st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
 
-            # Plot probability distribution
+            # Plot prediction probability distribution
             st.subheader('Prediction Probability Distribution')
             fig, ax = plt.subplots()
             ax.bar(['Stacking Model'], [stacking_proba[0]], color='blue')
@@ -123,11 +117,9 @@ if st.sidebar.button('Predict'):
 
             # ROC Curve
             st.subheader('Model Performance')
-            # Checking the prediction output for dimensions and values
             predictions = stacking_model.predict_proba(data[feature_columns])[:, 1]
             fpr, tpr, _ = roc_curve(data['CVD'], predictions)
             auc_score = roc_auc_score(data['CVD'], predictions)
-            
             fig, ax = plt.subplots()
             ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {auc_score:.2f})')
             ax.plot([0, 1], [0, 1], 'k--')
