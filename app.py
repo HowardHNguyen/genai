@@ -17,10 +17,10 @@ def download_file(url, dest):
         return False
 
 # URLs for the model files
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_model.pkl'
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
 
 # Local paths for the model files
-stacking_model_path = 'stacking_model.pkl'
+stacking_model_path = 'genai_stacking_model.pkl'
 
 # Download the models if not already present
 if not os.path.exists(stacking_model_path):
@@ -37,7 +37,7 @@ except Exception as e:
     stacking_model = None
 
 # Load the dataset
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/frmgham2.csv'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 try:
     data = pd.read_csv(data_url)
     data.fillna(data.mean(), inplace=True)  # Handle missing values
