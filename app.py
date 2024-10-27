@@ -42,7 +42,7 @@ if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
 # Load the stacking model
-@st.cache_resource(suppress_st_warning=True)
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def load_stacking_model():
     try:
         model = joblib.load(stacking_model_path)
@@ -55,7 +55,7 @@ if loading_error:
     st.error(loading_error)
 
 # Load the dataset
-@st.cache_data(suppress_st_warning=True)
+@st.cache(allow_output_mutation=True)
 def load_data():
     try:
         data = pd.read_csv(data_url)
