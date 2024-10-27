@@ -18,8 +18,8 @@ def download_file(url, dest):
         return False
 
 # URLs for the model files
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/genai_stacking_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/cnn_model.h5'
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/genai_stacking_model.pkl'
+cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/cnn_model.h5'
 
 # Local paths for the model files
 stacking_model_path = 'genai_stacking_model.pkl'
@@ -42,7 +42,7 @@ except Exception as e:
     st.error(f"Error loading models: {e}")
 
 # Load the dataset
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/frmgham2.csv'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/master/frmgham2.csv'
 try:
     data = pd.read_csv(data_url)
 except Exception as e:
