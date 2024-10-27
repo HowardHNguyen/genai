@@ -94,7 +94,7 @@ def user_input_features():
         'BPMEDS': bpmeds,
         'STROKE': stroke,
         'HYPERTEN': hyperten,
-        'PREVHYP': Prevalent Hypertensive,
+        'PREVHYP': prevalent-hypertensive,
         'LDLC': ldlc,
         'HDLC': hdlc
     }
