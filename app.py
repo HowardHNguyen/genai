@@ -29,7 +29,7 @@ if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
 # Load the stacking model
-@st.cache_resource
+@st.cache(allow_output_mutation=True)
 def load_stacking_model():
     try:
         model = joblib.load(stacking_model_path)
