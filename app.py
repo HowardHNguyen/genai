@@ -77,39 +77,39 @@ feature_columns = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'CURSMOKE',
 st.sidebar.header('Enter your parameters')
 
 def user_input_features():
-    age = st.sidebar.slider('Enter your age:', 32, 81, 54)
-    totchol = st.sidebar.slider('Total Cholesterol:', 107, 696, 200)
-    sysbp = st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151)
-    diabp = st.sidebar.slider('Diastolic Blood Pressure:', 30, 150, 89)
-    bmi = st.sidebar.slider('BMI:', 14.43, 56.80, 26.77)
-    cursmoke = st.sidebar.selectbox('Current Smoker:', (0, 1))
-    glucose = st.sidebar.slider('Glucose:', 39, 478, 117)
-    diabetes = st.sidebar.selectbox('Diabetes:', (0, 1))
-    heartrate = st.sidebar.slider('Heart Rate:', 37, 220, 91)
-    cigpday = st.sidebar.slider('Cigarettes Per Day:', 0, 90, 20)
-    bpmeds = st.sidebar.selectbox('On BP Meds:', (0, 1))
     stroke = st.sidebar.selectbox('Stroke:', (0, 1))
-    hyperten = st.sidebar.selectbox('Hypertension:', (0, 1))
+    sysbp = st.sidebar.slider('Systolic Blood Pressure:', 83, 295, 151)
+    age = st.sidebar.slider('Enter your age:', 32, 81, 54)
     prevhyp = st.sidebar.selectbox('Previous Hypertension:', (0, 1))
+    hyperten = st.sidebar.selectbox('Hypertension:', (0, 1))
+    diabp = st.sidebar.slider('Diastolic Blood Pressure:', 30, 150, 89)
+    diabetes = st.sidebar.selectbox('Diabetes:', (0, 1))
+    bpmeds = st.sidebar.selectbox('On BP Meds:', (0, 1))
+    bmi = st.sidebar.slider('BMI:', 14.43, 56.80, 26.77)
+    glucose = st.sidebar.slider('Glucose:', 39, 478, 117)
+    totchol = st.sidebar.slider('Total Cholesterol:', 107, 696, 200)
+    cigpday = st.sidebar.slider('Cigarettes Per Day:', 0, 90, 20)
     ldlc = st.sidebar.slider('LDLC:', 10, 189, 130)
+    cursmoke = st.sidebar.selectbox('Current Smoker:', (0, 1))
+    heartrate = st.sidebar.slider('Heart Rate:', 37, 220, 91)
     hdlc = st.sidebar.slider('HDLC:', 20, 565, 50)
 
     data = {
-        'AGE': age,
-        'TOTCHOL': totchol,
-        'SYSBP': sysbp,
-        'DIABP': diabp,
-        'BMI': bmi,
-        'CURSMOKE': cursmoke,
-        'GLUCOSE': glucose,
-        'DIABETES': diabetes,
-        'HEARTRTE': heartrate,
-        'CIGPDAY': cigpday,
-        'BPMEDS': bpmeds,
         'STROKE': stroke,
-        'HYPERTEN': hyperten,
+        'SYSBP': sysbp,
+        'AGE': age,
         'PREVHYP': prevhyp,
-        'LDLC': ldlc,
+        'HYPERTEN': hyperten,
+        'DIABP': diabp,
+        'DIABETES': diabetes,
+        'BPMEDS': bpmeds,
+        'BMI': bmi,
+        'GLUCOSE': glucose,
+        'TOTCHOL': totchol,
+        'CIGPDAY': cigpday,
+        'LDLC': ldlc,        
+        'CURSMOKE': cursmoke,
+        'HEARTRTE': heartrate,
         'HDLC': hdlc
     }
     features = pd.DataFrame(data, index=[0])
