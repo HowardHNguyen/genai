@@ -77,8 +77,8 @@ def user_input_features():
     stroke = st.sidebar.selectbox('Stroke:', (0, 1))
     hyperten = st.sidebar.selectbox('Hypertension:', (0, 1))
     prevhyp = st.sidebar.selectbox('Prevalent Hypertensive:', (0, 1))
-    ldlc =  = st.sidebar.slider('Low Density Lipoprotein Cholesterol:', 20, 565, 100)
-    hdlc =  = st.sidebar.slider('High Density Lipoprotein Cholesterol:', 10, 190, 100)
+    ldlc = st.sidebar.slider('Low Density Lipoprotein Cholesterol:', 20, 565, 100)
+    hdlc = st.sidebar.slider('High Density Lipoprotein Cholesterol:', 10, 190, 100)
 
     data = {
         'AGE': age,
