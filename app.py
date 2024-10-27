@@ -1,48 +1,63 @@
 import streamlit as st
 import pandas as pd
-import joblib
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, roc_auc_score
+import joblib
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
+from tensorflow.keras.models import load_model
 import os
 import urllib.request
 
-# Function to download the file
-def download_file(url, dest):
-    try:
-        urllib.request.urlretrieve(url, dest)
-        return True
-    except Exception as e:
-        st.error(f"Error downloading {url}: {e}")
-        return False
+# Define the URLs for your model components
+model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
 
-# URL for the stacking model file on GitHub
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+# Local paths for the model components
+model_path = 'genai_stacking_model.pkl'
 
-# Local path for the stacking model file
-stacking_model_path = 'genai_stacking_model.pkl'
+# Download the model file if not already present
+if not os.path.exists(model_path):
+    st.info(f"Downloading {model_path}...")
+    urllib.request.urlretrieve(model_url, model_path)
 
-# Download the model if not already present
-if not os.path.exists(stacking_model_path):
-    st.info(f"Downloading {stacking_model_path}...")
-    download_file(stacking_model_url, stacking_model_path)
-
-# Load the stacking model with a more robust check
-stacking_model = None
+# Load the dictionary with individual models
 try:
-    model_obj = joblib.load(stacking_model_path)
-    
-    # Check if it's a model with predict_proba
-    if hasattr(model_obj, "predict_proba"):
-        stacking_model = model_obj
-    elif isinstance(model_obj, dict) and "stacking_model" in model_obj:
-        # If it's a dictionary, check if it contains the actual model
-        stacking_model = model_obj["stacking_model"]
-    else:
-        st.error("The loaded file does not contain a valid model with the required methods.")
-        
+    model_dict = joblib.load(model_path)
 except Exception as e:
-    st.error(f"Error loading model: {e}")
+    st.error(f"Error loading model dictionary: {e}")
+    model_dict = None
+
+# Check if the required models are in the dictionary
+if model_dict:
+    rf_model = model_dict.get('rf_model')
+    xgbm_model = model_dict.get('xgbm_model')
+    cnn_model_path = model_dict.get('cnn_model_path')  # Assuming this is a path to a .h5 file
+    meta_model = model_dict.get('meta_model')
+
+    # Load CNN model if it’s stored as a path
+    if cnn_model_path and os.path.exists(cnn_model_path):
+        cnn_model = load_model(cnn_model_path)
+    else:
+        st.error("CNN model file could not be loaded.")
+        cnn_model = None
+
+    # Verify all components
+    if rf_model and xgbm_model and cnn_model and meta_model:
+        # Construct the stacking model
+        stacking_model = StackingClassifier(
+            estimators=[
+                ('rf', rf_model),
+                ('xgb', xgbm_model),
+                ('cnn', cnn_model)  # Use Keras model directly if compatible with StackingClassifier
+            ],
+            final_estimator=meta_model,
+            passthrough=True
+        )
+    else:
+        st.error("One or more model components could not be loaded.")
+else:
+    st.error("Failed to load the model dictionary.")
+
 
 # Load the dataset
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/cvd/master/frmgham2.csv'
@@ -84,7 +99,7 @@ def user_input_features():
 input_df = user_input_features()
 
 # Apply the model to make predictions
-if stacking_model and st.sidebar.button('PREDICT NOW'):
+if st.sidebar.button('Predict') and stacking_model:
     try:
         stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
         st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
