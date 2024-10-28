@@ -34,10 +34,10 @@ if not os.path.exists(stacking_model_path):
     download_file(stacking_model_url, stacking_model_path)
 
 # Load stacking model with caching
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+@st.cache(suppress_st_warning=True, allow_output_mutation=True)
 def load_stacking_model():
     try:
-        model = joblib.load(stacking_model_path)
+        model = joblib.load('genai_stacking_model.pkl')  # Update path if needed
         return model, None
     except Exception as e:
         return None, f"Error loading model: {e}"
