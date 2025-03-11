@@ -104,7 +104,7 @@ user_data = {
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
-if st.button("PREDICT"):
+if st.button("Predict"):
     if stacking_model:
         try:
             # Prediction using stacking model
