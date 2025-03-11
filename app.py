@@ -104,17 +104,17 @@ user_data = {
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
-if st.button("Predict"):
-    if rf_model:
+if st.button("PREDICT"):
+    if stacking_model:
         try:
-            # Prediction moved right below the title
-            rf_proba = rf_model.predict_proba(input_df)[:, 1]
-            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
+            # Prediction using stacking model
+            stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}**")
 
             # Prediction Probability Distribution
             st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots()
-            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
+            bar = ax.barh(["Stacking Model"], [stacking_proba[0]], color="blue")
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
             # Add percentage label to the bar
@@ -127,24 +127,12 @@ if st.button("Predict"):
             st.subheader("Model Performance")
             st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
 
-            # Feature Importances (Random Forest)
-            st.subheader("Feature Importances (Random Forest)")
-            importances = rf_model.feature_importances_
-            indices = np.argsort(importances)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.barh(range(len(indices)), importances[indices], color='blue')
-            ax.set_yticks(range(len(indices)))
-            ax.set_yticklabels([feature_columns[i] for i in indices])
-            ax.set_xlabel('Importance')
-            ax.set_title('Feature Importances (Random Forest)')
-            st.pyplot(fig)
-
             # Notes
             st.subheader("Notes")
             st.write("""
                 - These predictions are for informational purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a Random Forest approach with multiple features.
+                - The model uses a stacking approach with multiple features.
             """, unsafe_allow_html=True)
 
         except Exception as e:
