@@ -62,7 +62,7 @@ def load_stacking_model():
 stacking_model = load_stacking_model()
 
 # Load dataset
-@st.cache_data
+@st.cache(allow_output_mutation=True)
 def load_data():
     try:
         data = pd.read_csv(data_url)
