@@ -66,6 +66,10 @@ rf_model = load_rf_model()
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
                    'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
 
+# 2.a - Title of the Page
+st.title("CVD Prediction App by Howard Nguyen")
+st.write("Enter your parameters and click Predict to get the results.")
+
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
@@ -89,6 +93,57 @@ prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
 prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
 prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
+# 1 - Processing Button
+if st.button("Predict"):
+    # Example: Collect inputs into a list for model prediction
+    inputs = [sex, age, educ, cursmoke, cigpday, totchol, sysbp, diabp, bmi, heartrte,
+              glucose, hdlc, ldlc, diabetes, bpmeds, prevchd, prevap, prevmi, prevstrk, prevhyp]
+    
+    # Placeholder for model prediction (replace with your stacking GenAI model)
+    prediction_probability = 0.12  # Example value; replace with model output
+    fpr = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])  # Example ROC data
+    tpr = np.array([0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.98, 0.99, 1, 1])
+    auc = 0.96  # Example AUC
+    feature_names = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 
+                     'DIABP', 'BMI', 'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 
+                     'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
+    importances = [0.1, 0.15, 0.05, 0.03, 0.02, 0.12, 0.18, 0.1, 0.08, 0.07, 0.09, 
+                   0.11, 0.1, 0.04, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01]  # Example importances
+
+    # 2.b - Results-1-Prediction Probability Distribution
+    st.subheader("Prediction Probability Distribution")
+    fig, ax = plt.subplots()
+    ax.barh(["Stacking Model"], [prediction_probability], color="blue")
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("Probability")
+    st.pyplot(fig)
+
+    # 2.c - Results-2-Model-Performance
+    st.subheader("Model Performance")
+    st.write("ROC Curve")
+    fig, ax = plt.subplots()
+    ax.plot(fpr, tpr, label=f"Stacking Model (AUC = {auc:.2f})", color="blue")
+    ax.plot([0, 1], [0, 1], "k--")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.legend()
+    st.pyplot(fig)
+
+    # 2.d - Results-3-Risk-Factors-Feature-Importance
+    st.subheader("Risk Factors / Feature Importances")
+    fig, ax = plt.subplots()
+    ax.barh(feature_names, importances, color="blue")
+    ax.set_xlabel("Importance")
+    st.pyplot(fig)
+
+    # 2.e - Results-4-Notes
+    st.subheader("Notes")
+    st.write("""
+        - These predictions are for informational purposes only.
+        - Consult a healthcare professional for medical advice.
+        - The model uses a stacking approach with multiple features.
+    """, unsafe_allow_html=True)
+    
 # Prepare input data
 user_data = {
     'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
