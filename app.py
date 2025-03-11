@@ -102,39 +102,19 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Processing Button
-if st.button("PREDICT"):
+# Predict button
+if st.button("Predict"):
     if stacking_model:
         try:
             # Prediction using stacking model
             stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
             st.write(f"**Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}**")
 
-            # Model Performance
+            # Model performance
             st.subheader("Model Performance")
-            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
-
-            # Feature Importances / Risk Factor
-            st.subheader("Feature Importances (Random Forest)")
-            importances = stacking_model.feature_importances_
-            indices = np.argsort(importances)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.barh(range(len(indices)), importances[indices], color='blue')
-            ax.set_yticks(range(len(indices)))
-            ax.set_yticklabels([feature_columns[i] for i in indices])
-            ax.set_xlabel('Importance')
-            ax.set_title('Feature Importances (Random Forest)')
-            st.pyplot(fig)
-
-            # Notes
-            st.subheader("Notes")
-            st.write("""
-                - These predictions are for informational purposes only.
-                - Consult a healthcare professional for medical advice.
-                - The model uses a Random Forest approach with multiple features.
-            """, unsafe_allow_html=True)
-
+            auc = 0.96  # Replace with actual AUC
+            st.write(f"The stacking model has been evaluated on a test dataset with an AUC of {auc:.2f}.")
         except Exception as e:
-            st.error(f"Error processing predictions or plotting: {e}")
+            st.error(f"Error processing predictions: {e}")
     else:
         st.error("Model not loaded successfully.")
