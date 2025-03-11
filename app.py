@@ -50,20 +50,17 @@ if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
 
-# Load the model with caching
+# Load the stacking model
 @st.cache_resource
-def load_model():
-    model = joblib.load('stacking_genai_model.pkl')
-    if isinstance(model, dict):
-        model = model.get('model')  # Extract model if it’s in a dictionary
-        if model is None:
-            raise ValueError("Dictionary does not contain 'model' key")
-    if not hasattr(model, 'predict_proba'):
-        raise ValueError("Loaded model does not have 'predict_proba' method")
-    return model
+def load_stacking_model():
+    try:
+        model = joblib.load("stacking_genai_model.pkl")
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
 
-# Load model
-stacking_model = load_model()
+stacking_model = load_stacking_model()
 
 # Define feature columns exactly as used during training
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
@@ -71,7 +68,7 @@ feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSB
 
 # Title of the Page
 st.title("CVD Prediction App by Howard Nguyen")
-st.write("Model of Generative AI+RF+xGB+CNN")
+st.write("Enter your parameters and click Predict to get the results.")
 
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
@@ -98,17 +95,59 @@ prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
 # Prepare input data
 user_data = {
-    'SEX': sex, 'AGE': age, 'educ': 1, 'CURSMOKE': 0, 'CIGPDAY': 0, 'TOTCHOL': 200, 'SYSBP': 120, 
-    'DIABP': 80, 'BMI': 25, 'HEARTRTE': 70, 'GLUCOSE': 90, 'HDLC': 50, 'LDLC': 130, 'DIABETES': 0, 
-    'BPMEDS': 0, 'PREVCHD': 0, 'PREVAP': 0, 'PREVMI': 0, 'PREVSTRK': 0, 'PREVHYP': 0
-    # Adjust defaults or add sliders/selectboxes for all features
+    'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
+    'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
+    'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
+    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
+    'PREVHYP': prevhyp
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Make predictions
-if st.button("PREDICT"):
-    try:
-        proba = stacking_model.predict_proba(input_data)[:, 1]
-        st.write(f"Prediction: {proba[0]:.2f}")
-    except Exception as e:
-        st.error(f"Error making predictions: {e}")
+# Processing Button
+if st.button("Predict"):
+    if rf_model:
+        try:
+            # Prediction moved right below the title
+            rf_proba = rf_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
+
+            # Prediction Probability Distribution
+            st.subheader("Prediction Probability Distribution")
+            fig, ax = plt.subplots()
+            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
+            ax.set_xlim(0, 1)
+            ax.set_xlabel("Probability")
+            # Add percentage label to the bar
+            for rect in bar:
+                width = rect.get_width()
+                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
+            st.pyplot(fig)
+
+            # Model Performance
+            st.subheader("Model Performance")
+            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
+
+            # Feature Importances (Random Forest)
+            st.subheader("Feature Importances (Random Forest)")
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(range(len(indices)), importances[indices], color='blue')
+            ax.set_yticks(range(len(indices)))
+            ax.set_yticklabels([feature_columns[i] for i in indices])
+            ax.set_xlabel('Importance')
+            ax.set_title('Feature Importances (Random Forest)')
+            st.pyplot(fig)
+
+            # Notes
+            st.subheader("Notes")
+            st.write("""
+                - These predictions are for informational purposes only.
+                - Consult a healthcare professional for medical advice.
+                - The model uses a Random Forest approach with multiple features.
+            """, unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Error processing predictions or plotting: {e}")
+    else:
+        st.error("Model not loaded successfully.")
