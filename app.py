@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from tensorflow.keras.models import load_model
+from sklearn.ensemble import StackingClassifier
 import os
 import urllib.request
 
@@ -61,85 +62,92 @@ def load_stacking_model():
 
 stacking_model = load_stacking_model()
 
-# Load dataset
-@st.cache(allow_output_mutation=True)
-def load_data():
-    try:
-        data = pd.read_csv(data_url)
-        data.fillna(data.mean(), inplace=True)
-        return data
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return None
-
-data = load_data()
-
-# Define the feature columns (ensure they match model training order)
-#feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 
-#                   'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 
-#                   'PREVMI', 'PREVSTRK', 'PREVHYP']
-
-# Feature columns (adjust based on your dataset)
-feature_columns = ["SEX", "AGE", "EDUC", "CURSMOKE", "CIGPDAY", "TOTCHOL", "SYSBP"]
+# Define feature columns exactly as used during training
+feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 
+                   'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 
+                   'PREVMI', 'PREVSTRK', 'PREVHYP']
 
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
-sex = st.sidebar.selectbox("SEX", [0, 1], index=0)
+sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
 age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
-educ = st.sidebar.slider("EDUC", 1.0, 4.0, 1.99)
-cursmoke = st.sidebar.selectbox("CURSMOKE", [0, 1], index=1)
-cigpday = st.sidebar.slider("CIGPDAY", 0.0, 90.0, 8.25)
-totchol = st.sidebar.slider("TOTCHOL", 107.0, 696.0, 241.16)
-sysbp = st.sidebar.slider("SYSBP", 83.5, 295.0, 136.32)
+educ = st.sidebar.slider("EDUC (Education Level)", 1.0, 4.0, 1.99)
+cursmoke = st.sidebar.selectbox("CURSMOKE (Current Smoker: 0 = No, 1 = Yes)", [0, 1], index=1)
+cigpday = st.sidebar.slider("CIGPDAY (Cigarettes per Day)", 0.0, 90.0, 8.25)
+totchol = st.sidebar.slider("TOTCHOL (Total Cholesterol)", 107.0, 696.0, 241.16)
+sysbp = st.sidebar.slider("SYSBP (Systolic Blood Pressure)", 83.5, 295.0, 136.32)
+diabp = st.sidebar.slider("DIABP (Diastolic Blood Pressure)", 30.0, 150.0, 80.0)  # Example range
+bmi = st.sidebar.slider("BMI (Body Mass Index)", 15.0, 50.0, 25.0)  # Example range
+heartrte = st.sidebar.slider("HEARTRTE (Heart Rate)", 40.0, 120.0, 75.0)  # Example range
+glucose = st.sidebar.slider("GLUCOSE", 50.0, 300.0, 100.0)  # Example range
+hdlc = st.sidebar.slider("HDLC (HDL Cholesterol)", 20.0, 100.0, 50.0)  # Example range
+ldlc = st.sidebar.slider("LDLC (LDL Cholesterol)", 50.0, 300.0, 130.0)  # Example range
+diabetes = st.sidebar.selectbox("DIABETES (0 = No, 1 = Yes)", [0, 1], index=0)
+bpmeds = st.sidebar.selectbox("BPMEDS (Blood Pressure Meds: 0 = No, 1 = Yes)", [0, 1], index=0)
+prevchd = st.sidebar.selectbox("PREVCHD (Prev. Coronary Heart Disease: 0 = No, 1 = Yes)", [0, 1], index=0)
+prevap = st.sidebar.selectbox("PREVAP (Prev. Angina Pectoris: 0 = No, 1 = Yes)", [0, 1], index=0)
+prevmi = st.sidebar.selectbox("PREVMI (Prev. Myocardial Infarction: 0 = No, 1 = Yes)", [0, 1], index=0)
+prevstrk = st.sidebar.selectbox("PREVSTRK (Prev. Stroke: 0 = No, 1 = Yes)", [0, 1], index=0)
+prevhyp = st.sidebar.selectbox("PREVHYP (Prev. Hypertension: 0 = No, 1 = Yes)", [0, 1], index=0)
 
 # Prepare input data
-input_data = {
-    "SEX": sex,
-    "AGE": age,
-    "EDUC": educ,
-    "CURSMOKE": cursmoke,
-    "CIGPDAY": cigpday,
-    "TOTCHOL": totchol,
-    "SYSBP": sysbp
+user_data = {
+    'SEX': sex,
+    'AGE': age,
+    'educ': educ,
+    'CURSMOKE': cursmoke,
+    'CIGPDAY': cigpday,
+    'TOTCHOL': totchol,
+    'SYSBP': sysbp,
+    'DIABP': diabp,
+    'BMI': bmi,
+    'HEARTRTE': heartrte,
+    'GLUCOSE': glucose,
+    'HDLC': hdlc,
+    'LDLC': ldlc,
+    'DIABETES': diabetes,
+    'BPMEDS': bpmeds,
+    'PREVCHD': prevchd,
+    'PREVAP': prevap,
+    'PREVMI': prevmi,
+    'PREVSTRK': prevstrk,
+    'PREVHYP': prevhyp
 }
-input_df = pd.DataFrame([input_data])
+input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Predictions
 if stacking_model:
     try:
         stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
         st.subheader("Predictions")
-        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
+        st.write(f"Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}")
         
+        # Bar plot for prediction
         fig, ax = plt.subplots()
-        ax.bar(["Stacking Model"], [stacking_proba[0]], color="blue")
+        ax.bar(["CVD Risk"], [stacking_proba[0]], color="blue")
         ax.set_ylim(0, 1)
         ax.set_ylabel("Probability")
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Error making predictions: {e}")
-        stacking_proba = None
 
-    # Feature Importances
+    # Feature Importances (from XGBoost base estimator)
     st.subheader("Feature Importances (XGBoost)")
     try:
-        xgb_model = stacking_model.named_estimators_["xgb"]
+        xgb_model = stacking_model.named_estimators_['xgb']  # Assumes 'xgb' is the name of the XGBoost estimator
         importances = xgb_model.feature_importances_
         fig, ax = plt.subplots()
         indices = np.argsort(importances)
-        ax.barh(range(len(indices)), importances[indices], color="blue")
+        ax.barh(range(len(indices)), importances[indices], color='blue')
         ax.set_yticks(range(len(indices)))
         ax.set_yticklabels([feature_columns[i] for i in indices])
-        ax.set_xlabel("Importance")
+        ax.set_xlabel('Importance')
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Error plotting feature importances: {e}")
 
     # Model Performance
     st.subheader("Model Performance")
-    if stacking_proba is not None:
-        st.write("ROC curve not available for single prediction.")
-    else:
-        st.write("Prediction failed, cannot plot ROC curve.")
+    st.write("ROC curve not available for single prediction. Probability shown above.")
 else:
     st.error("Model not loaded successfully.")
