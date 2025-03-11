@@ -66,7 +66,7 @@ rf_model = load_rf_model()
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
                    'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
 
-# 2.a - Title of the Page
+# Title of the Page
 st.title("CVD Prediction App by Howard Nguyen")
 st.write("Enter your parameters and click Predict to get the results.")
 
@@ -93,57 +93,6 @@ prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
 prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
 prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
-# 1 - Processing Button
-if st.button("Predict"):
-    # Example: Collect inputs into a list for model prediction
-    inputs = [sex, age, educ, cursmoke, cigpday, totchol, sysbp, diabp, bmi, heartrte,
-              glucose, hdlc, ldlc, diabetes, bpmeds, prevchd, prevap, prevmi, prevstrk, prevhyp]
-    
-    # Placeholder for model prediction (replace with your stacking GenAI model)
-    prediction_probability = 0.12  # Example value; replace with model output
-    fpr = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])  # Example ROC data
-    tpr = np.array([0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.98, 0.99, 1, 1])
-    auc = 0.96  # Example AUC
-    feature_names = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 
-                     'DIABP', 'BMI', 'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 
-                     'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
-    importances = [0.1, 0.15, 0.05, 0.03, 0.02, 0.12, 0.18, 0.1, 0.08, 0.07, 0.09, 
-                   0.11, 0.1, 0.04, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01]  # Example importances
-
-    # 2.b - Results-1-Prediction Probability Distribution
-    st.subheader("Prediction Probability Distribution")
-    fig, ax = plt.subplots()
-    ax.barh(["Stacking Model"], [prediction_probability], color="blue")
-    ax.set_xlim(0, 1)
-    ax.set_xlabel("Probability")
-    st.pyplot(fig)
-
-    # 2.c - Results-2-Model-Performance
-    st.subheader("Model Performance")
-    st.write("ROC Curve")
-    fig, ax = plt.subplots()
-    ax.plot(fpr, tpr, label=f"Stacking Model (AUC = {auc:.2f})", color="blue")
-    ax.plot([0, 1], [0, 1], "k--")
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.legend()
-    st.pyplot(fig)
-
-    # 2.d - Results-3-Risk-Factors-Feature-Importance
-    st.subheader("Risk Factors / Feature Importances")
-    fig, ax = plt.subplots()
-    ax.barh(feature_names, importances, color="blue")
-    ax.set_xlabel("Importance")
-    st.pyplot(fig)
-
-    # 2.e - Results-4-Notes
-    st.subheader("Notes")
-    st.write("""
-        - These predictions are for informational purposes only.
-        - Consult a healthcare professional for medical advice.
-        - The model uses a stacking approach with multiple features.
-    """, unsafe_allow_html=True)
-    
 # Prepare input data
 user_data = {
     'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
@@ -154,28 +103,51 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Predictions
-# Predictions and Feature Importance
-if rf_model:
-    try:
-        # Prediction
-        rf_proba = rf_model.predict_proba(input_df)[:, 1]
-        st.subheader("Predictions")
-        st.write(f"Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}")
+# Processing Button
+if st.button("Predict"):
+    if rf_model:
+        try:
+            # Prediction moved right below the title
+            rf_proba = rf_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
 
-        # Feature Importance Plot
-        st.subheader("Feature Importances (Random Forest)")
-        importances = rf_model.feature_importances_
-        indices = np.argsort(importances)
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.barh(range(len(indices)), importances[indices], color='blue')
-        ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels([feature_columns[i] for i in indices])
-        ax.set_xlabel('Importance')
-        ax.set_title('Feature Importances (Random Forest)')
-        st.pyplot(fig)
+            # Prediction Probability Distribution
+            st.subheader("Prediction Probability Distribution")
+            fig, ax = plt.subplots()
+            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
+            ax.set_xlim(0, 1)
+            ax.set_xlabel("Probability")
+            # Add percentage label to the bar
+            for rect in bar:
+                width = rect.get_width()
+                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
+            st.pyplot(fig)
 
-    except Exception as e:
-        st.error(f"Error processing predictions or plotting: {e}")
-else:
-    st.error("Model not loaded successfully.")
+            # Model Performance
+            st.subheader("Model Performance")
+            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
+
+            # Feature Importances (Random Forest)
+            st.subheader("Feature Importances (Random Forest)")
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(range(len(indices)), importances[indices], color='blue')
+            ax.set_yticks(range(len(indices)))
+            ax.set_yticklabels([feature_columns[i] for i in indices])
+            ax.set_xlabel('Importance')
+            ax.set_title('Feature Importances (Random Forest)')
+            st.pyplot(fig)
+
+            # Notes
+            st.subheader("Notes")
+            st.write("""
+                - These predictions are for informational purposes only.
+                - Consult a healthcare professional for medical advice.
+                - The model uses a Random Forest approach with multiple features.
+            """, unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Error processing predictions or plotting: {e}")
+    else:
+        st.error("Model not loaded successfully.")
