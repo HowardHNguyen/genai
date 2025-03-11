@@ -63,9 +63,8 @@ def load_rf_model():
 rf_model = load_rf_model()
 
 # Define feature columns exactly as used during training
-feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 
-                   'BMI', 'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 
-                   'HYPERTEN', 'STROKE']
+feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
+                   'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
 
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
@@ -85,15 +84,18 @@ ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 50.0)
 diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
 bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
 prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
-hyperten = st.sidebar.selectbox("Hypertension (0 = No, 1 = Yes)", [0, 1], index=0)
-stroke = st.sidebar.selectbox("Stroke (0 = No, 1 = Yes)", [0, 1], index=0)
+prevap = st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0)
+prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
+prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
+prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
 # Prepare input data
 user_data = {
     'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
     'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
     'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
-    'PREVCHD': prevchd, 'HYPERTEN': hyperten, 'STROKE': stroke
+    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
+    'PREVHYP': prevhyp
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
