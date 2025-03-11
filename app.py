@@ -95,16 +95,15 @@ prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
 # Prepare input data
 user_data = {
-    'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
-    'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
-    'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
-    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
-    'PREVHYP': prevhyp
+    'SEX': sex, 'AGE': age, 'educ': 1, 'CURSMOKE': 0, 'CIGPDAY': 0, 'TOTCHOL': 200, 'SYSBP': 120, 
+    'DIABP': 80, 'BMI': 25, 'HEARTRTE': 70, 'GLUCOSE': 90, 'HDLC': 50, 'LDLC': 130, 'DIABETES': 0, 
+    'BPMEDS': 0, 'PREVCHD': 0, 'PREVAP': 0, 'PREVMI': 0, 'PREVSTRK': 0, 'PREVHYP': 0
+    # Adjust defaults or add sliders/selectboxes for all features
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
-if st.button("Predict"):
+if st.button("PREDICT"):
     if stacking_model:
         try:
             # Prediction using stacking model
