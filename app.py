@@ -72,57 +72,44 @@ st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
 age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
 educ = st.sidebar.slider("EDUC (Education Level)", 1.0, 4.0, 1.99)
-cursmoke = st.sidebar.selectbox("CURSMOKE (Current Smoker: 0 = No, 1 = Yes)", [0, 1], index=1)
+cursmoke = st.sidebar.selectbox("CURSMOKE (0 = No, 1 = Yes)", [0, 1], index=1)
 cigpday = st.sidebar.slider("CIGPDAY (Cigarettes per Day)", 0.0, 90.0, 8.25)
 totchol = st.sidebar.slider("TOTCHOL (Total Cholesterol)", 107.0, 696.0, 241.16)
 sysbp = st.sidebar.slider("SYSBP (Systolic Blood Pressure)", 83.5, 295.0, 136.32)
-diabp = st.sidebar.slider("DIABP (Diastolic Blood Pressure)", 30.0, 150.0, 80.0)  # Example range
-bmi = st.sidebar.slider("BMI (Body Mass Index)", 15.0, 50.0, 25.0)  # Example range
-heartrte = st.sidebar.slider("HEARTRTE (Heart Rate)", 40.0, 120.0, 75.0)  # Example range
-glucose = st.sidebar.slider("GLUCOSE", 50.0, 300.0, 100.0)  # Example range
-hdlc = st.sidebar.slider("HDLC (HDL Cholesterol)", 20.0, 100.0, 50.0)  # Example range
-ldlc = st.sidebar.slider("LDLC (LDL Cholesterol)", 50.0, 300.0, 130.0)  # Example range
+diabp = st.sidebar.slider("DIABP (Diastolic Blood Pressure)", 30.0, 150.0, 80.0)
+bmi = st.sidebar.slider("BMI (Body Mass Index)", 15.0, 50.0, 25.0)
+heartrte = st.sidebar.slider("HEARTRTE (Heart Rate)", 40.0, 120.0, 75.0)
+glucose = st.sidebar.slider("GLUCOSE", 50.0, 300.0, 100.0)
+hdlc = st.sidebar.slider("HDLC (HDL Cholesterol)", 20.0, 100.0, 50.0)
+ldlc = st.sidebar.slider("LDLC (LDL Cholesterol)", 50.0, 300.0, 130.0)
 diabetes = st.sidebar.selectbox("DIABETES (0 = No, 1 = Yes)", [0, 1], index=0)
-bpmeds = st.sidebar.selectbox("BPMEDS (Blood Pressure Meds: 0 = No, 1 = Yes)", [0, 1], index=0)
-prevchd = st.sidebar.selectbox("PREVCHD (Prev. Coronary Heart Disease: 0 = No, 1 = Yes)", [0, 1], index=0)
-prevap = st.sidebar.selectbox("PREVAP (Prev. Angina Pectoris: 0 = No, 1 = Yes)", [0, 1], index=0)
-prevmi = st.sidebar.selectbox("PREVMI (Prev. Myocardial Infarction: 0 = No, 1 = Yes)", [0, 1], index=0)
-prevstrk = st.sidebar.selectbox("PREVSTRK (Prev. Stroke: 0 = No, 1 = Yes)", [0, 1], index=0)
-prevhyp = st.sidebar.selectbox("PREVHYP (Prev. Hypertension: 0 = No, 1 = Yes)", [0, 1], index=0)
+bpmeds = st.sidebar.selectbox("BPMEDS (0 = No, 1 = Yes)", [0, 1], index=0)
+prevchd = st.sidebar.selectbox("PREVCHD (0 = No, 1 = Yes)", [0, 1], index=0)
+prevap = st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0)
+prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
+prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
+prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
+hyperten = st.sidebar.selectbox("HYPERTEN (0 = No, 1 = Yes)", [0, 1], index=0)
+stroke = st.sidebar.selectbox("STROKE (0 = No, 1 = Yes)", [0, 1], index=0)
 
 # Prepare input data
 user_data = {
-    'SEX': sex,
-    'AGE': age,
-    'educ': educ,
-    'CURSMOKE': cursmoke,
-    'CIGPDAY': cigpday,
-    'TOTCHOL': totchol,
-    'SYSBP': sysbp,
-    'DIABP': diabp,
-    'BMI': bmi,
-    'HEARTRTE': heartrte,
-    'GLUCOSE': glucose,
-    'HDLC': hdlc,
-    'LDLC': ldlc,
-    'DIABETES': diabetes,
-    'BPMEDS': bpmeds,
-    'PREVCHD': prevchd,
-    'PREVAP': prevap,
-    'PREVMI': prevmi,
-    'PREVSTRK': prevstrk,
-    'PREVHYP': prevhyp
+    'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
+    'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
+    'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
+    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
+    'PREVHYP': prevhyp, 'HYPERTEN': hyperten, 'STROKE': stroke
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Predictions
+# Make predictions
 if stacking_model:
     try:
         stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
         st.subheader("Predictions")
         st.write(f"Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}")
         
-        # Bar plot for prediction
         fig, ax = plt.subplots()
         ax.bar(["CVD Risk"], [stacking_proba[0]], color="blue")
         ax.set_ylim(0, 1)
@@ -131,10 +118,10 @@ if stacking_model:
     except Exception as e:
         st.error(f"Error making predictions: {e}")
 
-    # Feature Importances (from XGBoost base estimator)
+    # Feature importances (optional)
     st.subheader("Feature Importances (XGBoost)")
     try:
-        xgb_model = stacking_model.named_estimators_['xgb']  # Assumes 'xgb' is the name of the XGBoost estimator
+        xgb_model = stacking_model.named_estimators_['xgb']  # Adjust 'xgb' if needed
         importances = xgb_model.feature_importances_
         fig, ax = plt.subplots()
         indices = np.argsort(importances)
@@ -146,7 +133,7 @@ if stacking_model:
     except Exception as e:
         st.error(f"Error plotting feature importances: {e}")
 
-    # Model Performance
+    # Model performance
     st.subheader("Model Performance")
     st.write("ROC curve not available for single prediction. Probability shown above.")
 else:
