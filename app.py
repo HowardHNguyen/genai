@@ -50,7 +50,7 @@ if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
 
-# Load the stacking model
+# Load the model with modern caching
 @st.cache_resource
 def load_stacking_model():
     try:
@@ -102,19 +102,13 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Predict button
+# Predictions
 if st.button("Predict"):
     if stacking_model:
         try:
-            # Prediction using stacking model
             stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
-            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}**")
-
-            # Model performance
-            st.subheader("Model Performance")
-            auc = 0.96  # Replace with actual AUC
-            st.write(f"The stacking model has been evaluated on a test dataset with an AUC of {auc:.2f}.")
+            st.write(f"Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}")
         except Exception as e:
-            st.error(f"Error processing predictions: {e}")
+            st.error(f"Error making predictions: {e}")
     else:
         st.error("Model not loaded successfully.")
