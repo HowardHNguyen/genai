@@ -50,17 +50,20 @@ if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
 
-# Load the model with modern caching
+# Load the model with caching
 @st.cache_resource
-def load_stacking_model():
-    try:
-        model = joblib.load("stacking_genai_model.pkl")
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+def load_model():
+    model = joblib.load('stacking_genai_model.pkl')
+    if isinstance(model, dict):
+        model = model.get('model')  # Extract model if it’s in a dictionary
+        if model is None:
+            raise ValueError("Dictionary does not contain 'model' key")
+    if not hasattr(model, 'predict_proba'):
+        raise ValueError("Loaded model does not have 'predict_proba' method")
+    return model
 
-stacking_model = load_stacking_model()
+# Load model
+stacking_model = load_model()
 
 # Define feature columns exactly as used during training
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
@@ -104,11 +107,8 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Make predictions
 if st.button("PREDICT"):
-    if stacking_model is None:
-        st.error("Model not loaded successfully.")
-    else:
-        try:
-            stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
-            st.write(f"Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}")
-        except Exception as e:
-            st.error(f"Error making predictions: {e}")
+    try:
+        proba = stacking_model.predict_proba(input_data)[:, 1]
+        st.write(f"Prediction: {proba[0]:.2f}")
+    except Exception as e:
+        st.error(f"Error making predictions: {e}")
