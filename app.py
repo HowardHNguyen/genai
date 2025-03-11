@@ -50,17 +50,17 @@ if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
 
-# Load Random Forest model
-@st.cache_resource  # Updated caching to avoid deprecation warning
-def load_rf_model():
+# Load the stacking model
+@st.cache_resource
+def load_stacking_model():
     try:
-        model = joblib.load("rf_model.pkl")
+        model = joblib.load("genai_stacking_model.pkl")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-rf_model = load_rf_model()
+stacking_model = load_stacking_model()
 
 # Define feature columns exactly as used during training
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
@@ -68,7 +68,7 @@ feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSB
 
 # Title of the Page
 st.title("CVD Prediction App by Howard Nguyen")
-st.write("Enter your parameters and click Predict to get the results.")
+st.write("Model of Generative AI+RF+xGB+CNN")
 
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
@@ -105,31 +105,19 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
 if st.button("Predict"):
-    if rf_model:
+    if stacking_model:
         try:
-            # Prediction moved right below the title
-            rf_proba = rf_model.predict_proba(input_df)[:, 1]
-            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
-
-            # Prediction Probability Distribution
-            st.subheader("Prediction Probability Distribution")
-            fig, ax = plt.subplots()
-            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
-            ax.set_xlim(0, 1)
-            ax.set_xlabel("Probability")
-            # Add percentage label to the bar
-            for rect in bar:
-                width = rect.get_width()
-                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
-            st.pyplot(fig)
+            # Prediction using stacking model
+            stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}**")
 
             # Model Performance
             st.subheader("Model Performance")
             st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
 
-            # Feature Importances (Random Forest)
+            # Feature Importances / Risk Factor
             st.subheader("Feature Importances (Random Forest)")
-            importances = rf_model.feature_importances_
+            importances = stacking_model.feature_importances_
             indices = np.argsort(importances)
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.barh(range(len(indices)), importances[indices], color='blue')
