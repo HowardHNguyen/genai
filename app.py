@@ -38,7 +38,7 @@ cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
 # Local paths for models
-stacking_model_path = 'genai_stacking_model.pkl'
+stacking_model_path = 'stacking_genai_model.pkl'
 cnn_model_path = 'cnn_model.h5'
 
 # Download models if they don't exist
@@ -54,7 +54,7 @@ if not os.path.exists(cnn_model_path):
 @st.cache_resource
 def load_stacking_model():
     try:
-        model = joblib.load("genai_stacking_model.pkl")
+        model = joblib.load("stacking_genai_model.pkl")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
