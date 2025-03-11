@@ -102,13 +102,13 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Predictions
-if st.button("Predict"):
-    if stacking_model:
+# Make predictions
+if st.button("PREDICT"):
+    if stacking_model is None:
+        st.error("Model not loaded successfully.")
+    else:
         try:
             stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
             st.write(f"Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}")
         except Exception as e:
             st.error(f"Error making predictions: {e}")
-    else:
-        st.error("Model not loaded successfully.")
