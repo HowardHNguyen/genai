@@ -50,7 +50,7 @@ if not os.path.exists(cnn_model_path):
     download_file(cnn_model_url, cnn_model_path)
 
 # Load the stacking model
-@st.cache(allow_output_mutation=True)
+@st.cache_resource
 def load_stacking_model():
     try:
         model = joblib.load("genai_stacking_model.pkl")
@@ -75,83 +75,71 @@ def load_data():
 data = load_data()
 
 # Define the feature columns (ensure they match model training order)
-feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 
-                   'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 
-                   'PREVMI', 'PREVSTRK', 'PREVHYP']
+#feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 
+#                   'HEARTRTE', 'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 
+#                   'PREVMI', 'PREVSTRK', 'PREVHYP']
 
-# Sidebar input parameters
-st.sidebar.header('Enter Your Parameters')
+# Feature columns (adjust based on your dataset)
+feature_columns = ["SEX", "AGE", "EDUC", "CURSMOKE", "CIGPDAY", "TOTCHOL", "SYSBP"]
 
-def user_input_features():
-    user_data = {}
-    for feature in feature_columns:
-        if feature in ['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']:
-            user_data[feature] = st.sidebar.selectbox(feature, [0, 1])
-        else:
-            user_data[feature] = st.sidebar.slider(feature, float(data[feature].min()), float(data[feature].max()), float(data[feature].mean()))
-    
-    return pd.DataFrame(user_data, index=[0])
+# Sidebar for user input
+st.sidebar.header("Enter Your Parameters")
+sex = st.sidebar.selectbox("SEX", [0, 1], index=0)
+age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
+educ = st.sidebar.slider("EDUC", 1.0, 4.0, 1.99)
+cursmoke = st.sidebar.selectbox("CURSMOKE", [0, 1], index=1)
+cigpday = st.sidebar.slider("CIGPDAY", 0.0, 90.0, 8.25)
+totchol = st.sidebar.slider("TOTCHOL", 107.0, 696.0, 241.16)
+sysbp = st.sidebar.slider("SYSBP", 83.5, 295.0, 136.32)
 
-input_df = user_input_features()
+# Prepare input data
+input_data = {
+    "SEX": sex,
+    "AGE": age,
+    "EDUC": educ,
+    "CURSMOKE": cursmoke,
+    "CIGPDAY": cigpday,
+    "TOTCHOL": totchol,
+    "SYSBP": sysbp
+}
+input_df = pd.DataFrame([input_data])
 
-# Ensure input_df columns match model feature order
-input_df = input_df[feature_columns]
-
-# Apply model predictions
-if st.sidebar.button('Predict'):
-    if stacking_model:
-        try:
-            rf_proba = stacking_model['rf_model'].predict_proba(input_df)[:, 1]
-            xgb_proba = stacking_model['xgb_model'].predict_proba(input_df)[:, 1]
-            cnn_proba = stacking_model['cnn_model'].predict(input_df.values.reshape(1, -1, 1)).ravel()
-
-            # Combine predictions into meta-model input
-            meta_input = np.column_stack([rf_proba, xgb_proba, cnn_proba])
-            stacking_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
-
-            st.subheader('Predictions')
-            st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
-
-            # Plot prediction probability distribution
-            fig, ax = plt.subplots()
-            ax.bar(['Stacking Model'], [stacking_proba[0]], color='blue')
-            ax.set_ylim(0, 1)
-            ax.set_ylabel('Probability')
-            st.pyplot(fig)
-        except Exception as e:
-            st.error(f"Error making predictions: {e}")
-    else:
-        st.error("Model could not be loaded.")
-
-    # Feature Importance (XGBoost)
-    st.subheader('Feature Importances (XGBoost)')
+# Predictions
+if stacking_model:
     try:
-        xgb_model = stacking_model['xgb_model']
+        stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
+        st.subheader("Predictions")
+        st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
+        
+        fig, ax = plt.subplots()
+        ax.bar(["Stacking Model"], [stacking_proba[0]], color="blue")
+        ax.set_ylim(0, 1)
+        ax.set_ylabel("Probability")
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Error making predictions: {e}")
+        stacking_proba = None
+
+    # Feature Importances
+    st.subheader("Feature Importances (XGBoost)")
+    try:
+        xgb_model = stacking_model.named_estimators_["xgb"]
         importances = xgb_model.feature_importances_
         fig, ax = plt.subplots()
         indices = np.argsort(importances)
-        ax.barh(range(len(indices)), importances[indices], color='blue', align='center')
+        ax.barh(range(len(indices)), importances[indices], color="blue")
         ax.set_yticks(range(len(indices)))
         ax.set_yticklabels([feature_columns[i] for i in indices])
-        ax.set_xlabel('Importance')
+        ax.set_xlabel("Importance")
         st.pyplot(fig)
     except Exception as e:
         st.error(f"Error plotting feature importances: {e}")
 
-    # ROC Curve
-    st.subheader('Model Performance')
-    try:
-        fpr, tpr, _ = roc_curve(data['CVD'], stacking_proba)
-        fig, ax = plt.subplots()
-        ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(data["CVD"], stacking_proba):.2f})')
-        ax.plot([0, 1], [0, 1], 'k--')
-        ax.set_xlabel('False Positive Rate')
-        ax.set_ylabel('True Positive Rate')
-        ax.legend(loc='best')
-        st.pyplot(fig)
-    except Exception as e:
-        st.error(f"Error plotting ROC curve: {e}")
-
+    # Model Performance
+    st.subheader("Model Performance")
+    if stacking_proba is not None:
+        st.write("ROC curve not available for single prediction.")
+    else:
+        st.write("Prediction failed, cannot plot ROC curve.")
 else:
-    st.write("## Cardiovascular Disease Prediction App")
-    st.write("### Enter your parameters and click Predict to get the results.")
+    st.error("Model not loaded successfully.")
