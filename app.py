@@ -20,12 +20,14 @@ def download_file(url, dest):
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
 cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
+scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'  # Add scaler URL
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
 cnn_model_path = 'cnn_model.h5'
+scaler_path = 'scaler.pkl'
 
-# Download models if they don’t exist
+# Download models and scaler if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
@@ -33,6 +35,10 @@ if not os.path.exists(stacking_model_path):
 if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
+
+if not os.path.exists(scaler_path):
+    st.info(f"Downloading {scaler_path}...")
+    download_file(scaler_url, scaler_path)
 
 # Load the stacking model
 @st.cache_resource
@@ -66,6 +72,9 @@ def load_stacking_model():
         return None
 
 stacking_model = load_stacking_model()
+
+# Load the scaler
+scaler = joblib.load(scaler_path)
 
 # Define feature columns exactly as used during training
 feature_columns = [
@@ -110,9 +119,8 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Scale input data to match training data
-scaler = StandardScaler()
-input_df_scaled = scaler.fit_transform(input_df)
+# Scale input data using the loaded scaler
+input_df_scaled = scaler.transform(input_df)
 st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
 # Function to preprocess input for CNN
