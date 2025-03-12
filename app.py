@@ -3,7 +3,6 @@ import pandas as pd
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.ensemble import StackingClassifier
 import os
 import urllib.request
 
@@ -38,20 +37,25 @@ def load_stacking_model():
         # If it’s a dictionary, inspect its keys
         if isinstance(loaded_object, dict):
             st.write("Loaded object is a dictionary with keys:", list(loaded_object.keys()))
-            # Attempt to extract the model if it’s stored under a specific key
-            possible_model_keys = ['model', 'stacking_model', 'classifier', 'clf']
-            for key in possible_model_keys:
-                if key in loaded_object and hasattr(loaded_object[key], 'predict_proba'):
-                    st.write(f"Found a model under key '{key}' of type {type(loaded_object[key])}")
-                    return loaded_object[key]
-            st.error("No valid model found in dictionary. Available keys don’t contain a StackingClassifier.")
-            return None
-        # If it’s directly a StackingClassifier, return it
-        elif isinstance(loaded_object, StackingClassifier):
-            st.write("StackingClassifier loaded directly.")
+            # Check the 'gen_stacking_meta_model' key specifically
+            if 'gen_stacking_meta_model' in loaded_object:
+                meta_model = loaded_object['gen_stacking_meta_model']
+                st.write(f"Meta model type under 'gen_stacking_meta_model': {type(meta_model)}")
+                if hasattr(meta_model, 'predict_proba'):
+                    st.write("Meta model supports predict_proba. Using it as the prediction model.")
+                    return meta_model
+                else:
+                    st.error("Meta model does not support 'predict_proba'. It may not be a compatible classifier.")
+                    return None
+            else:
+                st.error("No 'gen_stacking_meta_model' found or it doesn’t contain a valid model.")
+                return None
+        # If it’s directly a model, return it
+        elif hasattr(loaded_object, 'predict_proba'):
+            st.write("Loaded object is directly a model with predict_proba.")
             return loaded_object
         else:
-            st.error(f"Loaded object is of type {type(loaded_object)}, expected StackingClassifier or dict with model.")
+            st.error(f"Loaded object is of type {type(loaded_object)} and doesn’t support predict_proba.")
             return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
