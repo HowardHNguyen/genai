@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 from tensorflow.keras.models import load_model
+from sklearn.preprocessing import StandardScaler  # Added missing import
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
