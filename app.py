@@ -106,14 +106,15 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Function to preprocess input for CNN (assuming 1D CNN with 19 features + 1 channel)
+# Function to preprocess input for CNN (trying different shapes)
 def preprocess_for_cnn(input_df):
-    # Reshape for CNN (samples, timesteps, features) - assuming 1 timestep per feature
-    data = input_df.values.reshape((1, input_df.shape[1], 1))  # (1, 20, 1)
-    return data
+    # Try reshaping to (1, 19, 1) or (1, 20, 1)
+    data_20 = input_df.values.reshape((1, input_df.shape[1], 1))  # (1, 20, 1)
+    data_19 = input_df.values[:, :-1].reshape((1, input_df.shape[1] - 1, 1))  # (1, 19, 1), exclude last feature
+    return data_20, data_19
 
 # Processing Button
-if st.button("PREDICT"):
+if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -123,16 +124,20 @@ if st.button("PREDICT"):
             for model_name, base_model in stacking_model['base_models'].items():
                 if base_model is not None:
                     if model_name == 'cnn':
-                        # Preprocess for CNN
-                        cnn_input = preprocess_for_cnn(input_df)
-                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
-                        st.write(f"CNN Prediction: {proba[0]}")  # Debug: Check CNN output
+                        # Preprocess for CNN with both shapes
+                        cnn_input_20, cnn_input_19 = preprocess_for_cnn(input_df)
+                        proba_20 = base_model.predict(cnn_input_20)[:, 0]  # Try 20 features
+                        proba_19 = base_model.predict(cnn_input_19)[:, 0]  # Try 19 features
+                        st.write(f"CNN Prediction (20 features): {proba_20[0]}")
+                        st.write(f"CNN Prediction (19 features): {proba_19[0]}")
+                        # Use the one that varies (default to 19 if both are constant)
+                        proba = proba_19 if abs(proba_19[0] - 1.0) > 1e-10 else proba_20
                     elif hasattr(base_model, 'predict_proba'):
                         proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug: Check RF and XGB output
+                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     else:
                         proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug: Check fallback
+                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     meta_features.append(proba)
                 else:
                     st.error(f"Base model {model_name} is None.")
@@ -140,7 +145,7 @@ if st.button("PREDICT"):
 
             # Combine into a single input for the meta-model (should be 3 features)
             meta_input = np.column_stack(meta_features)
-            st.write(f"Meta-input: {meta_input}")  # Debug: Check meta-input values
+            st.write(f"Meta-input: {meta_input}")  # Debug
 
             # Ensure meta-input has 3 features
             if meta_input.shape[1] != 3:
