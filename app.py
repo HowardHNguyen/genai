@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 from tensorflow.keras.models import load_model
+from tensorflow.keras import layers
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -45,7 +46,8 @@ def load_stacking_model():
                 # Load CNN model
                 cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
                 if cnn_model:
-                    st.write(f"CNN Model Expected Input Shape: {cnn_model.input_shape}")  # Debug
+                    st.write(f"CNN Model Summary:")
+                    cnn_model.summary(print_fn=lambda x: st.write(x))  # Display model architecture
                 # Extract base models
                 base_models = {
                     'rf': loaded_object.get('rf_model'),
@@ -132,8 +134,12 @@ if st.button("PREDICT"):
                         # Preprocess for CNN
                         cnn_input = preprocess_for_cnn(input_df)
                         st.write(f"CNN Input Shape: {cnn_input.shape}")  # Debug
-                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
-                        st.write(f"CNN Prediction: {proba[0]}")  # Debug
+                        try:
+                            proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
+                            st.write(f"CNN Prediction: {proba[0]}")  # Debug
+                        except Exception as e:
+                            st.error(f"CNN Prediction failed: {e}. Excluding CNN from stacking.")
+                            proba = np.array([0.5])  # Fallback value
                     elif hasattr(base_model, 'predict_proba'):
                         proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
@@ -149,9 +155,9 @@ if st.button("PREDICT"):
             meta_input = np.column_stack(meta_features)
             st.write(f"Meta-input: {meta_input}")  # Debug
 
-            # Ensure meta-input has 3 features
-            if meta_input.shape[1] != 3:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
+            # Ensure meta-input has 3 features (or 2 if CNN fails)
+            if meta_input.shape[1] not in [2, 3]:
+                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 2 or 3. Check base models.")
                 raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
