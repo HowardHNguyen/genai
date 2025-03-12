@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
+from sklearn.preprocessing import StandardScaler
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -17,14 +18,20 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
+scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
+scaler_path = 'scaler.pkl'
 
-# Download model if it doesn’t exist
+# Download models and scaler if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
+
+if not os.path.exists(scaler_path):
+    st.info(f"Downloading {scaler_path}...")
+    download_file(scaler_url, scaler_path)
 
 # Load the stacking model
 @st.cache_resource
@@ -53,6 +60,9 @@ def load_stacking_model():
 
 stacking_model = load_stacking_model()
 
+# Load the scaler
+scaler = joblib.load(scaler_path)
+
 # Define feature columns exactly as used during training
 feature_columns = [
     'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
@@ -66,23 +76,23 @@ st.write("Enter your parameters and click Predict to get the results.")
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
+age = st.sidebar.slider("AGE", 32.0, 81.0, 32.0)  # Default to low-risk
 educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
-cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=1)
+cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0)  # Default to No
 cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
-totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 241.16)
-sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 136.32)
-diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0)
-bmi = st.sidebar.slider("BMI", 15.0, 59.0, 25.68)
-heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 75.0)
-glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 50.0)
-hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 50.0)
-ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 50.0)
+totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 150.0)  # Lower risk
+sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 90.0)  # Lower risk
+diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 60.0)  # Lower risk
+bmi = st.sidebar.slider("BMI", 15.0, 59.0, 20.0)  # Healthy
+heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0)  # Lower risk
+glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 80.0)
+hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 60.0)  # Higher good cholesterol
+ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 176.47)  # Mean value
 diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
 bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
 prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
 prevap = st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0)
-prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
+prevmi = st.sidebar.selectbox("PREMI (0 = No, 1 = Yes)", [0, 1], index=0)
 prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
 prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
@@ -96,6 +106,10 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
+# Scale input data using the loaded scaler
+input_df_scaled = scaler.transform(input_df)
+st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
+
 # Processing Button
 if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
@@ -107,10 +121,10 @@ if st.button("Predict"):
             for model_name, base_model in stacking_model['base_models'].items():
                 if base_model is not None:
                     if hasattr(base_model, 'predict_proba'):
-                        proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                        proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]  # Probability of positive class
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     else:
-                        proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
+                        proba = base_model.predict(input_df_scaled.reshape(1, -1))  # Fallback to predict if no predict_proba
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     meta_features.append(proba)
                 else:
