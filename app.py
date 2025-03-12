@@ -113,7 +113,7 @@ def preprocess_for_cnn(input_df):
     return data
 
 # Processing Button
-if st.button("Predict"):
+if st.button("PREDICT"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -125,11 +125,14 @@ if st.button("Predict"):
                     if model_name == 'cnn':
                         # Preprocess for CNN
                         cnn_input = preprocess_for_cnn(input_df)
-                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output, take first column
+                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
+                        st.write(f"CNN Prediction: {proba[0]}")  # Debug: Check CNN output
                     elif hasattr(base_model, 'predict_proba'):
                         proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug: Check RF and XGB output
                     else:
                         proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
+                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug: Check fallback
                     meta_features.append(proba)
                 else:
                     st.error(f"Base model {model_name} is None.")
@@ -137,6 +140,7 @@ if st.button("Predict"):
 
             # Combine into a single input for the meta-model (should be 3 features)
             meta_input = np.column_stack(meta_features)
+            st.write(f"Meta-input: {meta_input}")  # Debug: Check meta-input values
 
             # Ensure meta-input has 3 features
             if meta_input.shape[1] != 3:
@@ -150,7 +154,7 @@ if st.button("Predict"):
             # Prediction Probability Distribution (Red Color, Increased Height)
             st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots(figsize=(8, 0.75))  # Increased height to 0.75
-            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Changed to red
+            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Red color
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
             # Add percentage label to the bar
