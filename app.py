@@ -18,9 +18,8 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
-# Local paths for models
+# Local path for model
 stacking_model_path = 'stacking_genai_model.pkl'
 
 # Download model if it doesn’t exist
@@ -28,17 +27,32 @@ if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-# Load the stacking model with validation
+# Load and inspect the stacking model
 @st.cache_resource
 def load_stacking_model():
     try:
-        # Load the model
-        model = joblib.load(stacking_model_path)
-        # Check if it’s a StackingClassifier
-        if not isinstance(model, StackingClassifier):
-            st.error(f"Loaded model is of type {type(model)}, expected StackingClassifier.")
+        # Load the content of the .pkl file
+        loaded_object = joblib.load(stacking_model_path)
+        st.write(f"Loaded object type: {type(loaded_object)}")
+        
+        # If it’s a dictionary, inspect its keys
+        if isinstance(loaded_object, dict):
+            st.write("Loaded object is a dictionary with keys:", list(loaded_object.keys()))
+            # Attempt to extract the model if it’s stored under a specific key
+            possible_model_keys = ['model', 'stacking_model', 'classifier', 'clf']
+            for key in possible_model_keys:
+                if key in loaded_object and hasattr(loaded_object[key], 'predict_proba'):
+                    st.write(f"Found a model under key '{key}' of type {type(loaded_object[key])}")
+                    return loaded_object[key]
+            st.error("No valid model found in dictionary. Available keys don’t contain a StackingClassifier.")
             return None
-        return model
+        # If it’s directly a StackingClassifier, return it
+        elif isinstance(loaded_object, StackingClassifier):
+            st.write("StackingClassifier loaded directly.")
+            return loaded_object
+        else:
+            st.error(f"Loaded object is of type {type(loaded_object)}, expected StackingClassifier or dict with model.")
+            return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
@@ -47,10 +61,10 @@ stacking_model = load_stacking_model()
 
 # Debug info
 if stacking_model:
-    st.write(f"Loaded model type: {type(stacking_model)}")
-    st.write("StackingClassifier loaded successfully.")
+    st.write(f"Final loaded model type: {type(stacking_model)}")
+    st.write("Model loaded successfully.")
 else:
-    st.write("Model loading failed. Check the file or URL.")
+    st.write("Model loading failed. Check the file content or URL.")
 
 # Define feature columns exactly as used during training
 feature_columns = [
