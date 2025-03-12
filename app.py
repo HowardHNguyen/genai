@@ -20,7 +20,7 @@ def download_file(url, dest):
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
 cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
-scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'  # Add scaler URL
+scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
@@ -89,18 +89,18 @@ st.write("Enter your parameters and click Predict to get the results.")
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
+age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79, value=32.0)  # Default to low-risk
 educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
-cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=1)
+cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0)  # Default to No
 cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
-totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 241.16)
-sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 136.32)
-diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0)
-bmi = st.sidebar.slider("BMI", 15.0, 59.0, 25.68)
-heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 75.0)
-glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 50.0)
-hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 50.0)
-ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 50.0)
+totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 150.0)  # Lower risk
+sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 90.0)  # Lower risk
+diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 60.0)  # Lower risk
+bmi = st.sidebar.slider("BMI", 15.0, 59.0, 20.0)  # Healthy
+heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0)  # Lower risk
+glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 80.0)
+hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 60.0)  # Higher good cholesterol
+ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 176.47)  # Mean value
 diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
 bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
 prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
