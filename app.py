@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 from tensorflow.keras.models import load_model
-from tensorflow.keras import layers
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -112,13 +111,11 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Function to preprocess input for CNN
 def preprocess_for_cnn(input_df):
-    # Pad the input to match the expected shape (38 features)
+    # Use original 20 features and reshape
     data = input_df.values  # Shape: (1, 20)
-    # Pad with zeros to make it 38 features
-    padded_data = np.pad(data, ((0, 0), (0, 18)), mode='constant', constant_values=0)  # Shape: (1, 38)
     # Reshape for CNN (samples, timesteps, features)
-    padded_data = padded_data.reshape((1, 38, 1))  # Shape: (1, 38, 1)
-    return padded_data
+    data = data.reshape((1, 20, 1))  # Shape: (1, 20, 1)
+    return data
 
 # Processing Button
 if st.button("PREDICT"):
@@ -155,9 +152,9 @@ if st.button("PREDICT"):
             meta_input = np.column_stack(meta_features)
             st.write(f"Meta-input: {meta_input}")  # Debug
 
-            # Ensure meta-input has 3 features (or 2 if CNN fails)
-            if meta_input.shape[1] not in [2, 3]:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 2 or 3. Check base models.")
+            # Ensure meta-input has 3 features
+            if meta_input.shape[1] != 3:
+                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
                 raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
