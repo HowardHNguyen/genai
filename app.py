@@ -3,58 +3,41 @@ import pandas as pd
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, roc_auc_score
-from tensorflow.keras.models import load_model
 from sklearn.ensemble import StackingClassifier
 import os
 import urllib.request
 
-# Define the CNN model function (only needed when loading models)
-def create_cnn_model():
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Conv1D, Flatten, Dense, Dropout, MaxPooling1D
-    
-    model = Sequential([
-        Conv1D(16, kernel_size=3, activation='relu', input_shape=(19, 1)),
-        MaxPooling1D(pool_size=2),
-        Flatten(),
-        Dense(32, activation='relu'),
-        Dropout(0.5),
-        Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    return model
-
-# Function to download a file if it doesn't exist
+# Function to download a file if it doesn’t exist
 def download_file(url, dest):
     try:
         urllib.request.urlretrieve(url, dest)
+        return True
     except Exception as e:
         st.error(f"Error downloading {url}: {e}")
+        return False
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
-cnn_model_path = 'cnn_model.h5'
 
-# Download models if they don't exist
+# Download model if it doesn’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-if not os.path.exists(cnn_model_path):
-    st.info(f"Downloading {cnn_model_path}...")
-    download_file(cnn_model_url, cnn_model_path)
-
-# Load the stacking model
+# Load the stacking model with validation
 @st.cache_resource
 def load_stacking_model():
     try:
-        model = joblib.load("stacking_genai_model.pkl")
+        # Load the model
+        model = joblib.load(stacking_model_path)
+        # Check if it’s a StackingClassifier
+        if not isinstance(model, StackingClassifier):
+            st.error(f"Loaded model is of type {type(model)}, expected StackingClassifier.")
+            return None
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -62,17 +45,18 @@ def load_stacking_model():
 
 stacking_model = load_stacking_model()
 
-# Add debug info
+# Debug info
 if stacking_model:
     st.write(f"Loaded model type: {type(stacking_model)}")
-    if isinstance(stacking_model, StackingClassifier):
-        st.write("StackingClassifier loaded successfully.")
-    else:
-        st.write("Warning: Loaded model is not a StackingClassifier.")
-        
+    st.write("StackingClassifier loaded successfully.")
+else:
+    st.write("Model loading failed. Check the file or URL.")
+
 # Define feature columns exactly as used during training
-feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
-                   'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
+feature_columns = [
+    'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
+    'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP'
+]
 
 # Title of the Page
 st.title("CVD Prediction App by Howard Nguyen")
@@ -113,7 +97,9 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
 if st.button("Predict"):
-    if stacking_model:
+    if stacking_model is None:
+        st.error("Cannot make predictions: Model failed to load.")
+    else:
         try:
             # Prediction using stacking model
             stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
@@ -143,7 +129,7 @@ if st.button("Predict"):
                 - The model uses a stacking approach with multiple features.
             """, unsafe_allow_html=True)
 
+        except AttributeError as e:
+            st.error(f"Model error: {e}. The loaded model may not support 'predict_proba'. Check the model file.")
         except Exception as e:
             st.error(f"Error processing predictions or plotting: {e}")
-    else:
-        st.error("Model not loaded successfully.")
