@@ -43,19 +43,20 @@ def load_stacking_model():
                 st.write(f"Meta model type under 'gen_stacking_meta_model': {type(meta_model)}")
                 if hasattr(meta_model, 'predict_proba'):
                     st.write("Meta model supports predict_proba. Using it as the prediction model.")
-                    return meta_model
+                    # Extract base models
+                    base_models = {
+                        'rf': loaded_object.get('rf_model'),
+                        'xgb': loaded_object.get('xgb_model')
+                    }
+                    return {'meta_model': meta_model, 'base_models': base_models}
                 else:
                     st.error("Meta model does not support 'predict_proba'. It may not be a compatible classifier.")
                     return None
             else:
                 st.error("No 'gen_stacking_meta_model' found or it doesn’t contain a valid model.")
                 return None
-        # If it’s directly a model, return it
-        elif hasattr(loaded_object, 'predict_proba'):
-            st.write("Loaded object is directly a model with predict_proba.")
-            return loaded_object
         else:
-            st.error(f"Loaded object is of type {type(loaded_object)} and doesn’t support predict_proba.")
+            st.error(f"Loaded object is of type {type(loaded_object)} and not a dictionary.")
             return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -65,7 +66,7 @@ stacking_model = load_stacking_model()
 
 # Debug info
 if stacking_model:
-    st.write(f"Final loaded model type: {type(stacking_model)}")
+    st.write(f"Final loaded model type (meta): {type(stacking_model['meta_model'])}")
     st.write("Model loaded successfully.")
 else:
     st.write("Model loading failed. Check the file content or URL.")
@@ -115,18 +116,32 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
 if st.button("Predict"):
-    if stacking_model is None:
-        st.error("Cannot make predictions: Model failed to load.")
+    if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
+        st.error("Cannot make predictions: Model or base models failed to load.")
     else:
         try:
-            # Prediction using stacking model
-            stacking_proba = stacking_model.predict_proba(input_df)[:, 1]
-            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {stacking_proba[0]:.2f}**")
+            # Generate predictions from base models
+            meta_features = []
+            for model_name, base_model in stacking_model['base_models'].items():
+                if base_model is not None and hasattr(base_model, 'predict_proba'):
+                    proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                    meta_features.append(proba)
+                else:
+                    st.error(f"Base model {model_name} does not support predict_proba or is None.")
+                    raise Exception("Invalid base model.")
+
+            # Combine into a single input for the meta-model (should be 2 features from 2 base models)
+            meta_input = np.column_stack(meta_features)
+            st.write(f"Meta-input shape: {meta_input.shape}")  # Debug: Should be (1, 2)
+
+            # Prediction using meta-model
+            meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
+            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
 
             # Prediction Probability Distribution
             st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots()
-            bar = ax.barh(["Stacking Model"], [stacking_proba[0]], color="blue")
+            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="blue")
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
             # Add percentage label to the bar
@@ -148,6 +163,6 @@ if st.button("Predict"):
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
-            st.error(f"Model error: {e}. The loaded model may not support 'predict_proba'. Check the model file.")
+            st.error(f"Model error: {e}. Check if base models support predict_proba.")
         except Exception as e:
             st.error(f"Error processing predictions or plotting: {e}")
