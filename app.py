@@ -109,16 +109,18 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
+# Scale input data to match training data
+scaler = StandardScaler()
+input_df_scaled = scaler.fit_transform(input_df)
+
 # Function to preprocess input for CNN
-def preprocess_for_cnn(input_df):
-    # Use original 20 features and reshape
-    data = input_df.values  # Shape: (1, 20)
+def preprocess_for_cnn(input_df_scaled):
     # Reshape for CNN (samples, timesteps, features)
-    data = data.reshape((1, 20, 1))  # Shape: (1, 20, 1)
+    data = input_df_scaled.reshape((1, 20, 1))  # Shape: (1, 20, 1)
     return data
 
 # Processing Button
-if st.button("PREDICT"):
+if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -129,7 +131,7 @@ if st.button("PREDICT"):
                 if base_model is not None:
                     if model_name == 'cnn':
                         # Preprocess for CNN
-                        cnn_input = preprocess_for_cnn(input_df)
+                        cnn_input = preprocess_for_cnn(input_df_scaled)
                         st.write(f"CNN Input Shape: {cnn_input.shape}")  # Debug
                         try:
                             proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
@@ -138,10 +140,10 @@ if st.button("PREDICT"):
                             st.error(f"CNN Prediction failed: {e}. Excluding CNN from stacking.")
                             proba = np.array([0.5])  # Fallback value
                     elif hasattr(base_model, 'predict_proba'):
-                        proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                        proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]  # Probability of positive class
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     else:
-                        proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
+                        proba = base_model.predict(input_df_scaled.reshape(1, -1))  # Fallback to predict if no predict_proba
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     meta_features.append(proba)
                 else:
