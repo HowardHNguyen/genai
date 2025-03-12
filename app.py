@@ -89,7 +89,7 @@ st.write("Enter your parameters and click Predict to get the results.")
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79, value=32.0)  # Default to low-risk
+age = st.sidebar.slider("AGE", 32.0, 81.0, 32.0)  # Default to low-risk
 educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
 cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0)  # Default to No
 cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
