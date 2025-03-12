@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
-from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.models import load_model
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -18,20 +18,20 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'
+cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
-scaler_path = 'scaler.pkl'
+cnn_model_path = 'cnn_model.h5'
 
-# Download models and scaler if they don’t exist
+# Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-if not os.path.exists(scaler_path):
-    st.info(f"Downloading {scaler_path}...")
-    download_file(scaler_url, scaler_path)
+if not os.path.exists(cnn_model_path):
+    st.info(f"Downloading {cnn_model_path}...")
+    download_file(cnn_model_url, cnn_model_path)
 
 # Load the stacking model
 @st.cache_resource
@@ -42,10 +42,13 @@ def load_stacking_model():
         if isinstance(loaded_object, dict):
             if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
                 meta_model = loaded_object['gen_stacking_meta_model']
-                # Extract base models (excluding CNN)
+                # Load CNN model
+                cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
+                # Extract base models
                 base_models = {
                     'rf': loaded_object.get('rf_model'),
-                    'xgb': loaded_object.get('xgb_model')
+                    'xgb': loaded_object.get('xgb_model'),
+                    'cnn': cnn_model
                 }
                 return {'meta_model': meta_model, 'base_models': base_models}
             else:
@@ -60,9 +63,6 @@ def load_stacking_model():
 
 stacking_model = load_stacking_model()
 
-# Load the scaler
-scaler = joblib.load(scaler_path)
-
 # Define feature columns exactly as used during training
 feature_columns = [
     'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
@@ -76,18 +76,18 @@ st.write("Enter your parameters and click Predict to get the results.")
 # Sidebar for user input
 st.sidebar.header("Enter Your Parameters")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 32.0)  # Default to low-risk
+age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
 educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
-cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0)  # Default to No
+cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=1)
 cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
-totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 150.0)  # Lower risk
-sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 90.0)  # Lower risk
-diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 60.0)  # Lower risk
-bmi = st.sidebar.slider("BMI", 15.0, 59.0, 20.0)  # Healthy
-heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0)  # Lower risk
-glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 80.0)
-hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 60.0)  # Higher good cholesterol
-ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 176.47)  # Mean value
+totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 241.16)
+sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 136.32)
+diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0)
+bmi = st.sidebar.slider("BMI", 15.0, 59.0, 25.68)
+heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 75.0)
+glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 50.0)
+hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 50.0)
+ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 50.0)
 diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
 bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
 prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
@@ -106,9 +106,11 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Scale input data using the loaded scaler
-input_df_scaled = scaler.transform(input_df)
-st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
+# Function to preprocess input for CNN (assuming 1D CNN with 19 features + 1 channel)
+def preprocess_for_cnn(input_df):
+    # Reshape for CNN (samples, timesteps, features) - assuming 1 timestep per feature
+    data = input_df.values.reshape((1, input_df.shape[1], 1))  # (1, 20, 1)
+    return data
 
 # Processing Button
 if st.button("Predict"):
@@ -116,28 +118,29 @@ if st.button("Predict"):
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
         try:
-            # Generate predictions from base models (RF and XGB only)
+            # Generate predictions from base models
             meta_features = []
             for model_name, base_model in stacking_model['base_models'].items():
                 if base_model is not None:
-                    if hasattr(base_model, 'predict_proba'):
-                        proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]  # Probability of positive class
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
+                    if model_name == 'cnn':
+                        # Preprocess for CNN
+                        cnn_input = preprocess_for_cnn(input_df)
+                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output, take first column
+                    elif hasattr(base_model, 'predict_proba'):
+                        proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
                     else:
-                        proba = base_model.predict(input_df_scaled.reshape(1, -1))  # Fallback to predict if no predict_proba
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
+                        proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
                     meta_features.append(proba)
                 else:
                     st.error(f"Base model {model_name} is None.")
                     raise Exception("Invalid base model.")
 
-            # Combine into a single input for the meta-model (should be 2 features)
+            # Combine into a single input for the meta-model (should be 3 features)
             meta_input = np.column_stack(meta_features)
-            st.write(f"Meta-input: {meta_input}")  # Debug
 
-            # Ensure meta-input has 2 features
-            if meta_input.shape[1] != 2:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 2. Check base models.")
+            # Ensure meta-input has 3 features
+            if meta_input.shape[1] != 3:
+                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
                 raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
@@ -147,7 +150,7 @@ if st.button("Predict"):
             # Prediction Probability Distribution (Red Color, Increased Height)
             st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots(figsize=(8, 0.75))  # Increased height to 0.75
-            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Red color
+            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Changed to red
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
             # Add percentage label to the bar
@@ -186,7 +189,7 @@ if st.button("Predict"):
             st.write("""
                 - These predictions are for informational purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a stacking approach with Random Forest and XGBoost only (CNN excluded).
+                - The model uses a stacking approach with multiple features.
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
