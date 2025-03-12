@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 from tensorflow.keras.models import load_model
-from sklearn.preprocessing import StandardScaler  # Added missing import
+from sklearn.preprocessing import StandardScaler
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -113,6 +113,7 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 # Scale input data to match training data
 scaler = StandardScaler()
 input_df_scaled = scaler.fit_transform(input_df)
+st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
 # Function to preprocess input for CNN
 def preprocess_for_cnn(input_df_scaled):
