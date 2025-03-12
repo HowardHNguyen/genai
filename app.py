@@ -110,10 +110,13 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Function to preprocess input for CNN
 def preprocess_for_cnn(input_df):
+    # Pad the input to match the expected shape (38 features)
+    data = input_df.values  # Shape: (1, 20)
+    # Pad with zeros to make it 38 features
+    padded_data = np.pad(data, ((0, 0), (0, 18)), mode='constant', constant_values=0)  # Shape: (1, 38)
     # Reshape for CNN (samples, timesteps, features)
-    # Use (1, 19, 1) as per the create_cnn_model definition
-    data = input_df.values[:, :19].reshape((1, 19, 1))  # Use first 19 features
-    return data
+    padded_data = padded_data.reshape((1, 38, 1))  # Shape: (1, 38, 1)
+    return padded_data
 
 # Processing Button
 if st.button("PREDICT"):
