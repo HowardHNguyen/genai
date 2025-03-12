@@ -15,11 +15,11 @@ def download_file(url, dest):
         st.error(f"Error downloading {url}: {e}")
 
 # URLs for model files on GitHub
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
 data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
 # Local paths for models
-stacking_model_path = 'genai_stacking_model.pkl'
+stacking_model_path = 'stacking_genai_model.pkl'
 
 # Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
@@ -30,7 +30,7 @@ if not os.path.exists(stacking_model_path):
 @st.cache(allow_output_mutation=True)
 def load_stacking_model():
     try:
-        model = joblib.load("genai_stacking_model.pkl")
+        model = joblib.load("stacking_genai_model.pkl")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
