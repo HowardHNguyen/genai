@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
-from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler
 
 # Function to download a file if it doesn’t exist
@@ -19,22 +18,16 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
-cnn_model_path = 'cnn_model.h5'
 scaler_path = 'scaler.pkl'
 
 # Download models and scaler if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
-
-if not os.path.exists(cnn_model_path):
-    st.info(f"Downloading {cnn_model_path}...")
-    download_file(cnn_model_url, cnn_model_path)
 
 if not os.path.exists(scaler_path):
     st.info(f"Downloading {scaler_path}...")
@@ -49,16 +42,10 @@ def load_stacking_model():
         if isinstance(loaded_object, dict):
             if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
                 meta_model = loaded_object['gen_stacking_meta_model']
-                # Load CNN model
-                cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
-                if cnn_model:
-                    st.write(f"CNN Model Summary:")
-                    cnn_model.summary(print_fn=lambda x: st.write(x))  # Display model architecture
-                # Extract base models
+                # Extract base models (excluding CNN)
                 base_models = {
                     'rf': loaded_object.get('rf_model'),
-                    'xgb': loaded_object.get('xgb_model'),
-                    'cnn': cnn_model
+                    'xgb': loaded_object.get('xgb_model')
                 }
                 return {'meta_model': meta_model, 'base_models': base_models}
             else:
@@ -123,33 +110,17 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 input_df_scaled = scaler.transform(input_df)
 st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
-# Function to preprocess input for CNN
-def preprocess_for_cnn(input_df_scaled):
-    # Reshape for CNN (samples, timesteps, features)
-    data = input_df_scaled.reshape((1, 20, 1))  # Shape: (1, 20, 1)
-    return data
-
 # Processing Button
 if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
         try:
-            # Generate predictions from base models
+            # Generate predictions from base models (RF and XGB only)
             meta_features = []
             for model_name, base_model in stacking_model['base_models'].items():
                 if base_model is not None:
-                    if model_name == 'cnn':
-                        # Preprocess for CNN
-                        cnn_input = preprocess_for_cnn(input_df_scaled)
-                        st.write(f"CNN Input Shape: {cnn_input.shape}")  # Debug
-                        try:
-                            proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output
-                            st.write(f"CNN Prediction: {proba[0]}")  # Debug
-                        except Exception as e:
-                            st.error(f"CNN Prediction failed: {e}. Excluding CNN from stacking.")
-                            proba = np.array([0.5])  # Fallback value
-                    elif hasattr(base_model, 'predict_proba'):
+                    if hasattr(base_model, 'predict_proba'):
                         proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]  # Probability of positive class
                         st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
                     else:
@@ -160,13 +131,13 @@ if st.button("Predict"):
                     st.error(f"Base model {model_name} is None.")
                     raise Exception("Invalid base model.")
 
-            # Combine into a single input for the meta-model (should be 3 features)
+            # Combine into a single input for the meta-model (should be 2 features)
             meta_input = np.column_stack(meta_features)
             st.write(f"Meta-input: {meta_input}")  # Debug
 
-            # Ensure meta-input has 3 features
-            if meta_input.shape[1] != 3:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
+            # Ensure meta-input has 2 features
+            if meta_input.shape[1] != 2:
+                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 2. Check base models.")
                 raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
@@ -215,7 +186,7 @@ if st.button("Predict"):
             st.write("""
                 - These predictions are for informational purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a stacking approach with multiple features.
+                - The model uses a stacking approach with Random Forest and XGBoost only (CNN excluded).
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
