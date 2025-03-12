@@ -62,6 +62,14 @@ def load_stacking_model():
 
 stacking_model = load_stacking_model()
 
+# Add debug info
+if stacking_model:
+    st.write(f"Loaded model type: {type(stacking_model)}")
+    if isinstance(stacking_model, StackingClassifier):
+        st.write("StackingClassifier loaded successfully.")
+    else:
+        st.write("Warning: Loaded model is not a StackingClassifier.")
+        
 # Define feature columns exactly as used during training
 feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
                    'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
