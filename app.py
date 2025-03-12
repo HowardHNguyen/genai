@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
+from tensorflow.keras.models import load_model
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -17,14 +18,20 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
+cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
-# Local path for model
+# Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
+cnn_model_path = 'cnn_model.h5'
 
-# Download model if it doesn’t exist
+# Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
+
+if not os.path.exists(cnn_model_path):
+    st.info(f"Downloading {cnn_model_path}...")
+    download_file(cnn_model_url, cnn_model_path)
 
 # Load and inspect the stacking model
 @st.cache_resource
@@ -43,10 +50,13 @@ def load_stacking_model():
                 st.write(f"Meta model type under 'gen_stacking_meta_model': {type(meta_model)}")
                 if hasattr(meta_model, 'predict_proba'):
                     st.write("Meta model supports predict_proba. Using it as the prediction model.")
+                    # Load CNN model
+                    cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
                     # Extract base models
                     base_models = {
                         'rf': loaded_object.get('rf_model'),
-                        'xgb': loaded_object.get('xgb_model')
+                        'xgb': loaded_object.get('xgb_model'),
+                        'cnn': cnn_model
                     }
                     return {'meta_model': meta_model, 'base_models': base_models}
                 else:
@@ -114,6 +124,12 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
+# Function to preprocess input for CNN (assuming 1D CNN with 19 features + 1 channel)
+def preprocess_for_cnn(input_df):
+    # Reshape for CNN (samples, timesteps, features) - assuming 1 timestep per feature
+    data = input_df.values.reshape((1, input_df.shape[1], 1))  # (1, 20, 1)
+    return data
+
 # Processing Button
 if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
@@ -123,16 +139,28 @@ if st.button("Predict"):
             # Generate predictions from base models
             meta_features = []
             for model_name, base_model in stacking_model['base_models'].items():
-                if base_model is not None and hasattr(base_model, 'predict_proba'):
-                    proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                if base_model is not None:
+                    if model_name == 'cnn':
+                        # Preprocess for CNN
+                        cnn_input = preprocess_for_cnn(input_df)
+                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output, take first column
+                    elif hasattr(base_model, 'predict_proba'):
+                        proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                    else:
+                        proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
                     meta_features.append(proba)
                 else:
-                    st.error(f"Base model {model_name} does not support predict_proba or is None.")
+                    st.error(f"Base model {model_name} is None.")
                     raise Exception("Invalid base model.")
 
-            # Combine into a single input for the meta-model (should be 2 features from 2 base models)
+            # Combine into a single input for the meta-model (should be 3 features)
             meta_input = np.column_stack(meta_features)
-            st.write(f"Meta-input shape: {meta_input.shape}")  # Debug: Should be (1, 2)
+            st.write(f"Meta-input shape: {meta_input.shape}")  # Debug: Should be (1, 3)
+
+            # Ensure meta-input has 3 features
+            if meta_input.shape[1] != 3:
+                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
+                raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
             meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
@@ -163,6 +191,6 @@ if st.button("Predict"):
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
-            st.error(f"Model error: {e}. Check if base models support predict_proba.")
+            st.error(f"Model error: {e}. Check if base models support predict_proba or predict.")
         except Exception as e:
             st.error(f"Error processing predictions or plotting: {e}")
