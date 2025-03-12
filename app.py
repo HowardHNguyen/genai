@@ -113,7 +113,7 @@ def preprocess_for_cnn(input_df):
     return data
 
 # Processing Button
-if st.button("PREDICT"):
+if st.button("Predict"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -147,10 +147,10 @@ if st.button("PREDICT"):
             meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
             st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
 
-            # Prediction Probability Distribution (Reduced Height)
+            # Prediction Probability Distribution (Red Color, Increased Height)
             st.subheader("Prediction Probability Distribution")
-            fig, ax = plt.subplots(figsize=(8, 0.5))  # Reduced height to 50% (default height ~1)
-            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="blue")
+            fig, ax = plt.subplots(figsize=(8, 0.75))  # Increased height to 0.75
+            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Changed to red
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
             # Add percentage label to the bar
@@ -187,9 +187,9 @@ if st.button("PREDICT"):
             # Notes
             st.subheader("Notes")
             st.write("""
-                - These predictions are for informational and demo purposes only.
+                - These predictions are for informational purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a Stacking Generative AI approach with multiple predictive features.
+                - The model uses a stacking approach with multiple features.
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
