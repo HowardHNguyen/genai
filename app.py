@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
-from tensorflow.keras.models import load_model
 
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
@@ -18,23 +17,17 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
-cnn_model_path = 'cnn_model.h5'
 
 # Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
-if not os.path.exists(cnn_model_path):
-    st.info(f"Downloading {cnn_model_path}...")
-    download_file(cnn_model_url, cnn_model_path)
-
 # Load the stacking model
-@st.cache_resource
+@st.cache(allow_output_mutation=True)
 def load_stacking_model():
     try:
         # Load the content of the .pkl file
@@ -42,13 +35,10 @@ def load_stacking_model():
         if isinstance(loaded_object, dict):
             if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
                 meta_model = loaded_object['gen_stacking_meta_model']
-                # Load CNN model
-                cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
                 # Extract base models
                 base_models = {
                     'rf': loaded_object.get('rf_model'),
                     'xgb': loaded_object.get('xgb_model'),
-                    'cnn': cnn_model
                 }
                 return {'meta_model': meta_model, 'base_models': base_models}
             else:
@@ -106,14 +96,8 @@ user_data = {
 }
 input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Function to preprocess input for CNN (assuming 1D CNN with 19 features + 1 channel)
-def preprocess_for_cnn(input_df):
-    # Reshape for CNN (samples, timesteps, features) - assuming 1 timestep per feature
-    data = input_df.values.reshape((1, input_df.shape[1], 1))  # (1, 20, 1)
-    return data
-
 # Processing Button
-if st.button("Predict"):
+if st.button("PREDICT"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -121,78 +105,39 @@ if st.button("Predict"):
             # Generate predictions from base models
             meta_features = []
             for model_name, base_model in stacking_model['base_models'].items():
-                if base_model is not None:
-                    if model_name == 'cnn':
-                        # Preprocess for CNN
-                        cnn_input = preprocess_for_cnn(input_df)
-                        proba = base_model.predict(cnn_input)[:, 0]  # Assuming binary output, take first column
-                    elif hasattr(base_model, 'predict_proba'):
-                        proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
-                    else:
-                        proba = base_model.predict(input_df)  # Fallback to predict if no predict_proba
+                if base_model is not None and hasattr(base_model, 'predict_proba'):
+                    proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
                     meta_features.append(proba)
                 else:
-                    st.error(f"Base model {model_name} is None.")
+                    st.error(f"Base model {model_name} is None or does not support predict_proba.")
                     raise Exception("Invalid base model.")
 
-            # Combine into a single input for the meta-model (should be 3 features)
+            # Combine into a single input for the meta-model
             meta_input = np.column_stack(meta_features)
-
-            # Ensure meta-input has 3 features
-            if meta_input.shape[1] != 3:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 3. Check base models.")
-                raise Exception("Feature mismatch.")
 
             # Prediction using meta-model
             meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
             st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
 
-            # Prediction Probability Distribution (Red Color, Increased Height)
+            # Prediction Probability Distribution
             st.subheader("Prediction Probability Distribution")
-            fig, ax = plt.subplots(figsize=(8, 0.75))  # Increased height to 0.75
-            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Changed to red
+            fig, ax = plt.subplots()
+            ax.barh(["Stacking Model"], [meta_proba[0]], color="red")
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
-            # Add percentage label to the bar
-            for rect in bar:
-                width = rect.get_width()
-                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
             st.pyplot(fig)
 
-            # Feature Importance / Risk Factor Plot
+            # Feature Importance Plot using Random Forest
             st.subheader("Feature Importance / Risk Factors (Random Forest)")
-            # Use Random Forest model for feature importance
             rf_model = stacking_model['base_models']['rf']
             if hasattr(rf_model, 'feature_importances_'):
                 importances = rf_model.feature_importances_
-                indices = np.argsort(importances)[::-1]  # Sort by importance
-                top_n = 10  # Show top 10 features
-                top_indices = indices[:top_n]
-                top_importances = importances[top_indices]
-                top_features = [feature_columns[i] for i in top_indices]
-
-                # Plot feature importance
-                fig2, ax2 = plt.subplots(figsize=(8, 4))
-                ax2.barh(top_features, top_importances, color="green")
+                indices = np.argsort(importances)[::-1]  
+                fig2, ax2 = plt.subplots()
+                ax2.barh([feature_columns[i] for i in indices], importances[indices], color="green")
                 ax2.set_xlabel("Importance")
-                ax2.invert_yaxis()  # Highest importance at the top
+                ax2.invert_yaxis()
                 st.pyplot(fig2)
-            else:
-                st.warning("Feature importance not available for Random Forest model.")
 
-            # Model Performance
-            st.subheader("Model Performance")
-            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
-
-            # Notes
-            st.subheader("Notes")
-            st.write("""
-                - These predictions are for informational purposes only.
-                - Consult a healthcare professional for medical advice.
-                - The model uses a stacking approach with multiple features.
-            """, unsafe_allow_html=True)
-
-        except AttributeError as e:
-            st.error(f"Model error: {e}. Check if base models support predict_proba or predict.")
         except Exception as e:
-            st.error(f"Error processing predictions or plotting: {e}")
+            st.error(f"Error processing predictions: {e}")
