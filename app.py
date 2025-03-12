@@ -33,37 +33,26 @@ if not os.path.exists(cnn_model_path):
     st.info(f"Downloading {cnn_model_path}...")
     download_file(cnn_model_url, cnn_model_path)
 
-# Load and inspect the stacking model
+# Load the stacking model
 @st.cache_resource
 def load_stacking_model():
     try:
         # Load the content of the .pkl file
         loaded_object = joblib.load(stacking_model_path)
-        st.write(f"Loaded object type: {type(loaded_object)}")
-        
-        # If it’s a dictionary, inspect its keys
         if isinstance(loaded_object, dict):
-            st.write("Loaded object is a dictionary with keys:", list(loaded_object.keys()))
-            # Check the 'gen_stacking_meta_model' key specifically
-            if 'gen_stacking_meta_model' in loaded_object:
+            if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
                 meta_model = loaded_object['gen_stacking_meta_model']
-                st.write(f"Meta model type under 'gen_stacking_meta_model': {type(meta_model)}")
-                if hasattr(meta_model, 'predict_proba'):
-                    st.write("Meta model supports predict_proba. Using it as the prediction model.")
-                    # Load CNN model
-                    cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
-                    # Extract base models
-                    base_models = {
-                        'rf': loaded_object.get('rf_model'),
-                        'xgb': loaded_object.get('xgb_model'),
-                        'cnn': cnn_model
-                    }
-                    return {'meta_model': meta_model, 'base_models': base_models}
-                else:
-                    st.error("Meta model does not support 'predict_proba'. It may not be a compatible classifier.")
-                    return None
+                # Load CNN model
+                cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
+                # Extract base models
+                base_models = {
+                    'rf': loaded_object.get('rf_model'),
+                    'xgb': loaded_object.get('xgb_model'),
+                    'cnn': cnn_model
+                }
+                return {'meta_model': meta_model, 'base_models': base_models}
             else:
-                st.error("No 'gen_stacking_meta_model' found or it doesn’t contain a valid model.")
+                st.error("No 'gen_stacking_meta_model' found or it doesn’t support 'predict_proba'.")
                 return None
         else:
             st.error(f"Loaded object is of type {type(loaded_object)} and not a dictionary.")
@@ -73,13 +62,6 @@ def load_stacking_model():
         return None
 
 stacking_model = load_stacking_model()
-
-# Debug info
-if stacking_model:
-    st.write(f"Final loaded model type (meta): {type(stacking_model['meta_model'])}")
-    st.write("Model loaded successfully.")
-else:
-    st.write("Model loading failed. Check the file content or URL.")
 
 # Define feature columns exactly as used during training
 feature_columns = [
@@ -131,7 +113,7 @@ def preprocess_for_cnn(input_df):
     return data
 
 # Processing Button
-if st.button("Predict"):
+if st.button("PREDICT"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -155,7 +137,6 @@ if st.button("Predict"):
 
             # Combine into a single input for the meta-model (should be 3 features)
             meta_input = np.column_stack(meta_features)
-            st.write(f"Meta-input shape: {meta_input.shape}")  # Debug: Should be (1, 3)
 
             # Ensure meta-input has 3 features
             if meta_input.shape[1] != 3:
@@ -166,9 +147,9 @@ if st.button("Predict"):
             meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
             st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
 
-            # Prediction Probability Distribution
+            # Prediction Probability Distribution (Reduced Height)
             st.subheader("Prediction Probability Distribution")
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(8, 0.5))  # Reduced height to 50% (default height ~1)
             bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="blue")
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
@@ -178,6 +159,27 @@ if st.button("Predict"):
                 ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
             st.pyplot(fig)
 
+            # Feature Importance / Risk Factor Plot
+            st.subheader("Feature Importance / Risk Factors (Random Forest)")
+            # Use Random Forest model for feature importance
+            rf_model = stacking_model['base_models']['rf']
+            if hasattr(rf_model, 'feature_importances_'):
+                importances = rf_model.feature_importances_
+                indices = np.argsort(importances)[::-1]  # Sort by importance
+                top_n = 10  # Show top 10 features
+                top_indices = indices[:top_n]
+                top_importances = importances[top_indices]
+                top_features = [feature_columns[i] for i in top_indices]
+
+                # Plot feature importance
+                fig2, ax2 = plt.subplots(figsize=(8, 4))
+                ax2.barh(top_features, top_importances, color="green")
+                ax2.set_xlabel("Importance")
+                ax2.invert_yaxis()  # Highest importance at the top
+                st.pyplot(fig2)
+            else:
+                st.warning("Feature importance not available for Random Forest model.")
+
             # Model Performance
             st.subheader("Model Performance")
             st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
@@ -185,9 +187,9 @@ if st.button("Predict"):
             # Notes
             st.subheader("Notes")
             st.write("""
-                - These predictions are for informational purposes only.
+                - These predictions are for informational and demo purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a stacking approach with multiple features.
+                - The model uses a Stacking Generative AI approach with multiple predictive features.
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
