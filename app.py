@@ -18,20 +18,16 @@ def download_file(url, dest):
 
 # URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
+
 
 # Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
-cnn_model_path = 'cnn_model.h5'
+
 
 # Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
-
-if not os.path.exists(cnn_model_path):
-    st.info(f"Downloading {cnn_model_path}...")
-    download_file(cnn_model_url, cnn_model_path)
 
 # Load and inspect the stacking model
 @st.cache_resource
@@ -50,13 +46,10 @@ def load_stacking_model():
                 st.write(f"Meta model type under 'gen_stacking_meta_model': {type(meta_model)}")
                 if hasattr(meta_model, 'predict_proba'):
                     st.write("Meta model supports predict_proba. Using it as the prediction model.")
-                    # Load CNN model
-                    cnn_model = load_model(cnn_model_path) if os.path.exists(cnn_model_path) else None
                     # Extract base models
                     base_models = {
                         'rf': loaded_object.get('rf_model'),
-                        'xgb': loaded_object.get('xgb_model'),
-                        'cnn': cnn_model
+                        'xgb': loaded_object.get('xgb_model')
                     }
                     return {'meta_model': meta_model, 'base_models': base_models}
                 else:
