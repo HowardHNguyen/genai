@@ -29,7 +29,9 @@ if not os.path.exists(stacking_model_path):
 @st.cache_resource
 def load_stacking_model():
     try:
-        model = joblib.load(stacking_model_path)
+        model = joblib.load("stacking_genai_model.pkl")
+        if 'gen_stacking_meta_model' not in model:
+            raise KeyError("Missing 'gen_stacking_meta_model' in loaded stacking model.")
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -82,7 +84,10 @@ if st.sidebar.button('Predict'):
 
             # Combine predictions for meta-model
             meta_input = np.column_stack([rf_proba, xgb_proba])
-            stacking_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
+
+            # Ensure meta_model is correctly used
+            meta_model = stacking_model['gen_stacking_meta_model']
+            stacking_proba = meta_model.predict_proba(meta_input)[:, 1]
 
             st.subheader('Predictions')
             st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
