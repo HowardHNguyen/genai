@@ -188,6 +188,24 @@ if st.button("PREDICT"):
                 - The model uses a stacking generative AI approach with Random Forest and XGBoost only (CNN excluded).
             """, unsafe_allow_html=True)
 
+            # Data Information Notes 
+            st.subheader("Data Information")
+            st.write("""
+                     Predictive models aim to forecast the likelihood or timing of outcomes (e.g., cardiovascular disease, stroke) based on baseline data. The Framingham study is renowned for cardiovascular risk assessment, so predictors should be relevant to such outcomes. All baseline characteristics are potential predictors because they provide information about risk factors:
+                     - 'SEX': Gender differences affect disease risk.
+                     - 'AGE': Older age increases risk for many conditions.
+                     - 'TOTCHOL', 'HDLC', 'LDLC': Cholesterol levels are key for heart disease prediction. 
+                     - 'SYSBP', 'DIABP': Blood pressure is a major cardiovascular risk factor.
+                     - 'CURSMOKE', 'CIGPDAY': Smoking is a strong predictor of cardiovascular and other diseases. 
+                     - 'BMI': Obesity is linked to multiple health risks.
+                     - 'DIABETES': A significant risk factor for cardiovascular events.
+                     - 'BPMEDS': Indicates treated hypertension, affecting blood pressure interpretation.
+                     - 'HEARTRTE': Resting heart rate reflects fitness and health.
+                     - 'GLUCOSE': Elevated levels indicate metabolic issues.
+                     - 'educ': Socioeconomic status influences health outcomes.
+                     - 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP': Prior events strongly predict future events.
+            """, unsafe_allow_html=True)
+
         except AttributeError as e:
             st.error(f"Model error: {e}. Check if base models support predict_proba or predict.")
         except Exception as e:
