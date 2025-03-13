@@ -117,11 +117,11 @@ if st.button("🔍 Predict Risk"):
             st.success(f"**Risk Level: {risk_level}**")
 
             # Feature Importance (RF)
-            st.subheader("📊 Feature Importance / Risk Factors (Top 10)")
+            st.subheader("📊 CVD Risk Factors (Top 10)")
             rf_model = stacking_model['base_models']['rf']
             importances = rf_model.feature_importances_
             indices = np.argsort(importances)[-10:]
-            plt.figure(figsize=(8, 5))
+            plt.figure(figsize=(8, 3))
             plt.barh(np.array(feature_columns)[indices], importances[indices], color='blue')
             plt.xlabel("Importance")
             plt.title("Top 10 Important Features (RF)")
@@ -140,10 +140,12 @@ if st.button("🔍 Predict Risk"):
             st.pyplot(plt)
 
             st.subheader("📌 Important Notes")
-            st.write("- **This is an AI-based prediction tool, not a medical diagnosis.**")
-            st.write("- **Always consult your doctor for medical advice.**")
-            st.write("- **Predictions are **not a substitute for professional medical advice**.**")
-            st.write("- **A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.**")
+            st.info("""
+                - This is an AI-based prediction tool, not a medical diagnosis.
+                - Always consult your doctor for medical advice.
+                - For **high-risk results**, it is strongly recommended to **consult with a physician**.
+                - A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.
+            """)
 
         except Exception as e:
             st.error(f"⚠️ Error: {e}")
