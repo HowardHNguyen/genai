@@ -71,10 +71,30 @@ st.title("🫀 Cardiovascular Disease (CVD) Risk Prediction")
 st.write("This tool helps assess your potential risk of developing CVD based on clinical parameters.")
 
 # Sidebar Inputs
-st.sidebar.header("📋 Enter Your Health Details")
+st.sidebar.header("📋 Input Your Health Metrics")
 
-user_data = {feature: st.sidebar.slider(feature, float(30), float(250), float(100)) if feature not in ['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
-             else st.sidebar.selectbox(feature, [0, 1]) for feature in feature_columns}
+user_data = {
+    'SEX': st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=1),
+    'AGE': st.sidebar.slider("AGE", 32.0, 81.0, 35.0),
+    'educ': st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 2.00),
+    'CURSMOKE': st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0),
+    'CIGPDAY': st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0),
+    'TOTCHOL': st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 195.00),
+    'SYSBP': st.sidebar.slider("Systolic BP", 83.5, 295.0, 120.00),
+    'DIABP': st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0),
+    'BMI': st.sidebar.slider("BMI", 15.0, 59.0, 25.68),
+    'HEARTRTE': st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0),
+    'GLUCOSE': st.sidebar.slider("Glucose", 50.0, 360.0, 90.0),
+    'HDLC': st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 45.0),
+    'LDLC': st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 99.0),
+    'DIABETES': st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0),
+    'BPMEDS': st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0),
+    'PREVCHD': st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0),
+    'PREVAP': st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0),
+    'PREVMI': st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0),
+    'PREVSTRK': st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0),
+    'PREVHYP': st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
+}
 
 input_df = pd.DataFrame([user_data])
 
@@ -124,41 +144,12 @@ if st.button("🔍 Predict Risk"):
             ax.barh(["CVD Risk"], [meta_proba], color=color)
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
-            for rect in ax.patches:
-                width = rect.get_width()
-                ax.text(width + 0.02, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
             st.pyplot(fig)
-
-            # 🔬 Feature Importance (XGBoost)
-            st.subheader("🔎 Feature Importance (XGBoost)")
-            xgb_model = stacking_model['base_models']['xgb']
-            if hasattr(xgb_model, 'feature_importances_'):
-                importances = xgb_model.feature_importances_
-                sorted_indices = np.argsort(importances)[::-1][:10]  # Top 10 features
-                fig, ax = plt.subplots(figsize=(8, 5))
-                ax.barh(np.array(feature_columns)[sorted_indices], importances[sorted_indices], color="blue")
-                ax.set_xlabel("Feature Importance")
-                ax.invert_yaxis()
-                st.pyplot(fig)
-
-            # 📉 Model Performance
-            st.subheader("📊 Model Performance")
-            st.write("This model has been evaluated on test data with an **AUC of 0.96**, ensuring high reliability in CVD risk assessment.")
-
-            # ℹ️ Notes
-            st.subheader("ℹ️ Important Notes")
-            st.info("""
-                - This tool provides **CVD risk estimation** based on medical data.
-                - Predictions are **not a substitute for professional medical advice**.
-                - For **high-risk results**, it is strongly recommended to **consult with a physician**.
-                - A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.
-            """)
 
         except Exception as e:
             st.error(f"⚠️ Error: {e}")
     else:
         st.error("⚠️ Model loading failed. Please check the model file.")
 
-# Footer
 st.write("---")
 st.write("Developed by **Howard Nguyen** | Data Science & AI | 2025")
