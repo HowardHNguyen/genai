@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 
+# Set page config for a wider layout
+st.set_page_config(page_title="CVD Risk Prediction", layout="wide")
+
 # Function to download a file if it doesn’t exist
 def download_file(url, dest):
     try:
@@ -15,15 +18,15 @@ def download_file(url, dest):
         st.error(f"Error downloading {url}: {e}")
         return False
 
-# URLs for model files on GitHub
+# URLs for model files
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
 scaler_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/scaler.pkl'
 
-# Local paths for models
+# Local paths
 stacking_model_path = 'stacking_genai_model.pkl'
 scaler_path = 'scaler.pkl'
 
-# Download models and scaler if they don’t exist
+# Download models and scaler if not present
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
@@ -36,22 +39,17 @@ if not os.path.exists(scaler_path):
 @st.cache_resource
 def load_stacking_model():
     try:
-        # Load the content of the .pkl file
         loaded_object = joblib.load(stacking_model_path)
-        if isinstance(loaded_object, dict):
-            if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
-                meta_model = loaded_object['gen_stacking_meta_model']
-                # Extract base models (excluding CNN)
-                base_models = {
+        if isinstance(loaded_object, dict) and 'gen_stacking_meta_model' in loaded_object:
+            return {
+                'meta_model': loaded_object['gen_stacking_meta_model'],
+                'base_models': {
                     'rf': loaded_object.get('rf_model'),
                     'xgb': loaded_object.get('xgb_model')
                 }
-                return {'meta_model': meta_model, 'base_models': base_models}
-            else:
-                st.error("No 'gen_stacking_meta_model' found or it doesn’t support 'predict_proba'.")
-                return None
+            }
         else:
-            st.error(f"Loaded object is of type {type(loaded_object)} and not a dictionary.")
+            st.error("Model structure incorrect. Please check model file.")
             return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -62,151 +60,105 @@ stacking_model = load_stacking_model()
 # Load the scaler
 scaler = joblib.load(scaler_path)
 
-# Define feature columns exactly as used during training
+# Define feature columns
 feature_columns = [
     'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
     'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP'
 ]
 
-# Title of the Page
-st.title("CVD Risk Prediction Application")
-st.write("By Howard Nguyen")
+# Title
+st.title("🫀 Cardiovascular Disease (CVD) Risk Prediction")
+st.write("This tool helps assess your potential risk of developing CVD based on clinical parameters.")
 
-# Sidebar for user input
-st.sidebar.header("Input Your Health Metrics")
-sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=1)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 35.0)
-educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 2.99)
-cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0)
-cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
-totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 195.16)
-sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 120.32)
-diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0)
-bmi = st.sidebar.slider("BMI", 15.0, 59.0, 25.68)
-heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0)
-glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 90.0)
-hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 45.0)
-ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 99.0)
-diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
-bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
-prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
-prevap = st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0)
-prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
-prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
-prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
+# Sidebar Inputs
+st.sidebar.header("📋 Enter Your Health Details")
 
-# Prepare input data
-user_data = {
-    'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
-    'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
-    'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
-    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
-    'PREVHYP': prevhyp
-}
-input_df = pd.DataFrame([user_data], columns=feature_columns)
+user_data = {feature: st.sidebar.slider(feature, float(30), float(250), float(100)) if feature not in ['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
+             else st.sidebar.selectbox(feature, [0, 1]) for feature in feature_columns}
 
-# Scale input data using the loaded scaler
+input_df = pd.DataFrame([user_data])
+
+# Scale input data
 input_df_scaled = scaler.transform(input_df)
-# st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
-# Processing Button
-if st.button("PREDICT"):
-    if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
-        st.error("Cannot make predictions: Model or base models failed to load.")
-    else:
+# Prediction
+if st.button("🔍 Predict Risk"):
+    if stacking_model:
         try:
-            # Generate predictions from base models (RF and XGB only)
+            # Base model predictions
             meta_features = []
             for model_name, base_model in stacking_model['base_models'].items():
-                if base_model is not None:
-                    if hasattr(base_model, 'predict_proba'):
-                        proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]  # Probability of positive class
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
-                    else:
-                        proba = base_model.predict(input_df_scaled.reshape(1, -1))  # Fallback to predict if no predict_proba
-                        st.write(f"{model_name.upper()} Prediction: {proba[0]}")  # Debug
-                    meta_features.append(proba)
+                if hasattr(base_model, 'predict_proba'):
+                    proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]
                 else:
-                    st.error(f"Base model {model_name} is None.")
-                    raise Exception("Invalid base model.")
+                    proba = base_model.predict(input_df_scaled.reshape(1, -1))
+                meta_features.append(proba)
 
-            # Combine into a single input for the meta-model (should be 2 features)
+            # Stack base model predictions
             meta_input = np.column_stack(meta_features)
-            st.write(f"Meta-input: {meta_input}")  # Debug
 
-            # Ensure meta-input has 2 features
-            if meta_input.shape[1] != 2:
-                st.error(f"Meta-input has {meta_input.shape[1]} features, but meta-model expects 2. Check base models.")
-                raise Exception("Feature mismatch.")
+            # Final meta-model prediction
+            meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1][0]
 
-            # Prediction using meta-model
-            meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
-            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
+            # 🏥 Risk Level Classification
+            if meta_proba < 0.3:
+                risk_level = "🟢 Low Risk"
+                risk_description = "Your CVD risk is low. Maintain a healthy lifestyle to keep it that way!"
+            elif 0.3 <= meta_proba < 0.7:
+                risk_level = "🟡 Moderate Risk"
+                risk_description = "You have a moderate risk of CVD. Consider making lifestyle improvements."
+            else:
+                risk_level = "🔴 High Risk"
+                risk_description = "Your CVD risk is high. It is recommended to consult with a doctor for further evaluation."
 
-            # Prediction Probability Distribution (Red Color, Increased Height)
-            st.subheader("Prediction Probability Distribution")
-            fig, ax = plt.subplots(figsize=(8, 0.75))  # Increased height to 0.75
-            bar = ax.barh(["Stacking Model"], [meta_proba[0]], color="red")  # Changed to red
+            # Display results
+            st.subheader("🧪 Prediction Results")
+            st.metric(label="**CVD Risk Probability**", value=f"{meta_proba:.2%}", delta_color="inverse")
+            st.success(f"**Risk Level: {risk_level}**")
+            st.write(risk_description)
+
+            # 📊 Probability Distribution
+            st.subheader("📈 Probability Distribution")
+            fig, ax = plt.subplots(figsize=(8, 1))
+            color = "green" if meta_proba < 0.3 else "yellow" if meta_proba < 0.7 else "red"
+            ax.barh(["CVD Risk"], [meta_proba], color=color)
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
-            # Add percentage label to the bar
-            for rect in bar:
+            for rect in ax.patches:
                 width = rect.get_width()
-                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
+                ax.text(width + 0.02, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
             st.pyplot(fig)
 
-            # Feature Importance / Risk Factor Plot
-            st.subheader("Feature Importance / Risk Factors (Top 10)")
-            # Use Random Forest model for feature importance
-            rf_model = stacking_model['base_models']['rf']
-            if hasattr(rf_model, 'feature_importances_'):
-                importances = rf_model.feature_importances_
-                indices = np.argsort(importances)[::-1]  # Sort by importance
-                top_n = 10  # Show top 10 features
-                top_indices = indices[:top_n]
-                top_importances = importances[top_indices]
-                top_features = [feature_columns[i] for i in top_indices]
+            # 🔬 Feature Importance (XGBoost)
+            st.subheader("🔎 Feature Importance (XGBoost)")
+            xgb_model = stacking_model['base_models']['xgb']
+            if hasattr(xgb_model, 'feature_importances_'):
+                importances = xgb_model.feature_importances_
+                sorted_indices = np.argsort(importances)[::-1][:10]  # Top 10 features
+                fig, ax = plt.subplots(figsize=(8, 5))
+                ax.barh(np.array(feature_columns)[sorted_indices], importances[sorted_indices], color="blue")
+                ax.set_xlabel("Feature Importance")
+                ax.invert_yaxis()
+                st.pyplot(fig)
 
-                # Plot feature importance
-                fig2, ax2 = plt.subplots(figsize=(8, 4))
-                ax2.barh(top_features, top_importances, color="green")
-                ax2.set_xlabel("Importance")
-                ax2.invert_yaxis()  # Highest importance at the top
-                st.pyplot(fig2)
-            else:
-                st.warning("Feature importance not available for Random Forest model.")
+            # 📉 Model Performance
+            st.subheader("📊 Model Performance")
+            st.write("This model has been evaluated on test data with an **AUC of 0.96**, ensuring high reliability in CVD risk assessment.")
 
-            # Model Performance
-            st.subheader("Model Performance")
-            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
+            # ℹ️ Notes
+            st.subheader("ℹ️ Important Notes")
+            st.info("""
+                - This tool provides **CVD risk estimation** based on medical data.
+                - Predictions are **not a substitute for professional medical advice**.
+                - For **high-risk results**, it is strongly recommended to **consult with a physician**.
+                - A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.
+            """)
 
-            # Notes
-            st.subheader("Notes")
-            st.write("""
-                - These predictions are for informational and demo purposes only.
-                - Consult a healthcare professional for medical advice.
-                - The model uses a stacking Generative AI approach with Random Forest and XGBoost.
-            """, unsafe_allow_html=True)
-
-            # Data Information Notes 
-            st.subheader("Data Information")
-            st.write("""
-                     Predictive models aim to forecast the likelihood or timing of outcomes (e.g., cardiovascular disease, stroke) based on baseline data. The Framingham study is renowned for cardiovascular risk assessment, so predictors should be relevant to such outcomes. All baseline characteristics are potential predictors because they provide information about risk factors:
-                     - 'SEX': Gender differences affect disease risk.
-                     - 'AGE': Older age increases risk for many conditions.
-                     - 'TOTCHOL', 'HDLC', 'LDLC': Cholesterol levels are key for heart disease prediction. 
-                     - 'SYSBP', 'DIABP': Blood pressure is a major cardiovascular risk factor.
-                     - 'CURSMOKE', 'CIGPDAY': Smoking is a strong predictor of cardiovascular and other diseases. 
-                     - 'BMI': Obesity is linked to multiple health risks.
-                     - 'DIABETES': A significant risk factor for cardiovascular events.
-                     - 'BPMEDS': Indicates treated hypertension, affecting blood pressure interpretation.
-                     - 'HEARTRTE': Resting heart rate reflects fitness and health.
-                     - 'GLUCOSE': Elevated levels indicate metabolic issues.
-                     - 'educ': Socioeconomic status influences health outcomes.
-                     - 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP': Prior events strongly predict future events.
-            """, unsafe_allow_html=True)
-
-        except AttributeError as e:
-            st.error(f"Model error: {e}. Check if base models support predict_proba or predict.")
         except Exception as e:
-            st.error(f"Error processing predictions or plotting: {e}")
+            st.error(f"⚠️ Error: {e}")
+    else:
+        st.error("⚠️ Model loading failed. Please check the model file.")
+
+# Footer
+st.write("---")
+st.write("Developed by **Howard Nguyen** | Data Science & AI | 2025")
