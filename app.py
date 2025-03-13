@@ -129,15 +129,15 @@ if st.button("🔍 Predict Risk"):
 
             # Model Performance (ROC Curve)
             st.subheader("📉 Model Performance")
-            fpr, tpr, _ = roc_curve([0, 1], [meta_proba, 1-meta_proba])
-            plt.figure(figsize=(6, 4))
-            plt.plot(fpr, tpr, label=f"AUC = {meta_proba:.2f}")
-            plt.plot([0, 1], [0, 1], linestyle="--")
-            plt.xlabel("False Positive Rate")
-            plt.ylabel("True Positive Rate")
-            plt.title("ROC Curve")
-            plt.legend()
-            st.pyplot(plt)
+            fig, ax = plt.subplots()
+            fpr, tpr, _ = roc_curve([0, 1], meta_proba)  # Placeholder for true label; replace as needed
+            ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score([0, 1], meta_proba):.2f})')
+            ax.plot([0, 1], [0, 1], 'k--')
+            ax.set_xlabel('False Positive Rate')
+            ax.set_ylabel('True Positive Rate')
+            ax.set_title('ROC Curve')
+            ax.legend(loc='best')
+            st.pyplot(fig)
 
             st.subheader("📌 Important Notes")
             st.info("""
