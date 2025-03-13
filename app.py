@@ -69,13 +69,13 @@ feature_columns = [
 ]
 
 # Title of the Page
-st.title("CVD Prediction App by Howard Nguyen")
-st.write("Enter your parameters and click Predict to get the results.")
+st.title("CVD Risk Prediction Application")
+st.write("By Howard Nguyen")
 
 # Sidebar for user input
-st.sidebar.header("Enter Your Parameters")
+st.sidebar.header("Input Your Health Metrics")
 sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
-age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
+age = st.sidebar.slider("AGE", 32.0, 81.0, 35.0)
 educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
 cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=1)
 cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
@@ -110,7 +110,7 @@ input_df_scaled = scaler.transform(input_df)
 # st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
 # Processing Button
-if st.button("Predict"):
+if st.button("PREDICT"):
     if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
         st.error("Cannot make predictions: Model or base models failed to load.")
     else:
@@ -156,7 +156,7 @@ if st.button("Predict"):
             st.pyplot(fig)
 
             # Feature Importance / Risk Factor Plot
-            st.subheader("Feature Importance / Risk Factors (Random Forest)")
+            st.subheader("Feature Importance / Risk Factors (Top 10)")
             # Use Random Forest model for feature importance
             rf_model = stacking_model['base_models']['rf']
             if hasattr(rf_model, 'feature_importances_'):
@@ -183,9 +183,9 @@ if st.button("Predict"):
             # Notes
             st.subheader("Notes")
             st.write("""
-                - These predictions are for informational purposes only.
+                - These predictions are for informational and demo purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a stacking approach with Random Forest and XGBoost only (CNN excluded).
+                - The model uses a stacking generative AI approach with Random Forest and XGBoost only (CNN excluded).
             """, unsafe_allow_html=True)
 
         except AttributeError as e:
