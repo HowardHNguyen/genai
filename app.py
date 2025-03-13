@@ -185,7 +185,7 @@ if st.button("PREDICT"):
             st.write("""
                 - These predictions are for informational and demo purposes only.
                 - Consult a healthcare professional for medical advice.
-                - The model uses a stacking generative AI approach with Random Forest and XGBoost only (CNN excluded).
+                - The model uses a stacking Generative AI approach with Random Forest and XGBoost.
             """, unsafe_allow_html=True)
 
             # Data Information Notes 
