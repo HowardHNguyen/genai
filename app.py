@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import urllib.request
+from sklearn.metrics import classification_report, roc_auc_score, roc_curve, accuracy_score
 
 # Set page config for a wider layout
 st.set_page_config(page_title="CVD Risk Prediction", layout="wide")
@@ -105,76 +106,48 @@ input_df_scaled = scaler.transform(input_df)
 if st.button("🔍 Predict Risk"):
     if stacking_model:
         try:
-            # Base model predictions
-            meta_features = []
-            for model_name, base_model in stacking_model['base_models'].items():
-                if hasattr(base_model, 'predict_proba'):
-                    proba = base_model.predict_proba(input_df_scaled.reshape(1, -1))[:, 1]
-                else:
-                    proba = base_model.predict(input_df_scaled.reshape(1, -1))
-                meta_features.append(proba)
-
-            # Stack base model predictions
-            meta_input = np.column_stack(meta_features)
-
-            # Final meta-model prediction
+            rf_proba = stacking_model['base_models']['rf'].predict_proba(input_df_scaled)[:, 1]
+            xgb_proba = stacking_model['base_models']['xgb'].predict_proba(input_df_scaled)[:, 1]
+            meta_input = np.column_stack([rf_proba, xgb_proba])
             meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1][0]
 
-            # 🏥 Risk Level Classification
-            if meta_proba < 0.3:
-                risk_level = "🟢 Low Risk"
-                risk_description = "Your CVD risk is low. Maintain a healthy lifestyle to keep it that way!"
-            elif 0.3 <= meta_proba < 0.7:
-                risk_level = "🟡 Moderate Risk"
-                risk_description = "You have a moderate risk of CVD. Consider making lifestyle improvements."
-            else:
-                risk_level = "🔴 High Risk"
-                risk_description = "Your CVD risk is high. It is recommended to consult with a doctor for further evaluation."
-
-            # Display results
-            st.subheader("🧪 Prediction Results")
-            st.metric(label="**CVD Risk Probability**", value=f"{meta_proba:.2%}", delta_color="inverse")
+            # Risk Level Classification
+            risk_level = "🟢 Low Risk" if meta_proba < 0.3 else "🟡 Moderate Risk" if meta_proba < 0.7 else "🔴 High Risk"
+            st.metric(label="**CVD Risk Probability**", value=f"{meta_proba:.2%}")
             st.success(f"**Risk Level: {risk_level}**")
-            st.write(risk_description)
 
-            # 📊 Probability Distribution
-            st.subheader("📈 Probability Distribution")
-            fig, ax = plt.subplots(figsize=(8, 1))
-            color = "green" if meta_proba < 0.3 else "yellow" if meta_proba < 0.7 else "red"
-            ax.barh(["CVD Risk"], [meta_proba], color=color)
-            ax.set_xlim(0, 1)
-            ax.set_xlabel("Probability")
-            st.pyplot(fig)
+            # Feature Importance (RF)
+            st.subheader("📊 Feature Importance / Risk Factors (Top 10)")
+            rf_model = stacking_model['base_models']['rf']
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)[-10:]
+            plt.figure(figsize=(8, 5))
+            plt.barh(np.array(feature_columns)[indices], importances[indices], color='blue')
+            plt.xlabel("Importance")
+            plt.title("Top 10 Important Features (RF)")
+            st.pyplot(plt)
 
-            # 🔬 Feature Importance (XGBoost)
-            st.subheader("🔎 Feature Importance (XGBoost)")
-            xgb_model = stacking_model['base_models']['xgb']
-            if hasattr(xgb_model, 'feature_importances_'):
-                importances = xgb_model.feature_importances_
-                sorted_indices = np.argsort(importances)[::-1][:10]  # Top 10 features
-                fig, ax = plt.subplots(figsize=(8, 5))
-                ax.barh(np.array(feature_columns)[sorted_indices], importances[sorted_indices], color="blue")
-                ax.set_xlabel("Feature Importance")
-                ax.invert_yaxis()
-                st.pyplot(fig)
+            # Model Performance (ROC Curve)
+            st.subheader("📉 Model Performance")
+            fpr, tpr, _ = roc_curve([0, 1], [meta_proba, 1-meta_proba])
+            plt.figure(figsize=(6, 4))
+            plt.plot(fpr, tpr, label=f"AUC = {meta_proba:.2f}")
+            plt.plot([0, 1], [0, 1], linestyle="--")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title("ROC Curve")
+            plt.legend()
+            st.pyplot(plt)
 
-            # 📉 Model Performance
-            st.subheader("📊 Model Performance")
-            st.write("This model has been evaluated on test data with an **AUC of 0.96**, ensuring high reliability in CVD risk assessment.")
-
-            # ℹ️ Notes
-            st.subheader("ℹ️ Important Notes")
-            st.info("""
-                - This tool provides **CVD risk estimation** based on medical data.
-                - Predictions are **not a substitute for professional medical advice**.
-                - For **high-risk results**, it is strongly recommended to **consult with a physician**.
-                - A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.
-            """)
+            st.subheader("📌 Important Notes")
+            st.write("- **This is an AI-based prediction tool, not a medical diagnosis.**")
+            st.write("- **Always consult your doctor for medical advice.**")
+            st.write("- **Predictions are **not a substitute for professional medical advice**.**")
+            st.write("- **A healthy lifestyle including **diet, exercise, and regular medical checkups** can reduce cardiovascular risks.**")
 
         except Exception as e:
             st.error(f"⚠️ Error: {e}")
     else:
         st.error("⚠️ Model loading failed. Please check the model file.")
 
-st.write("---")
 st.write("Developed by **Howard Nguyen** | Data Science & AI | 2025")
