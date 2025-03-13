@@ -3,6 +3,15 @@ import pandas as pd
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score
+from tensorflow.keras.models import load_model
+from sklearn.ensemble import StackingClassifier
+import osimport streamlit as st
+import pandas as pd
+import joblib
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score
 import os
 import urllib.request
 
@@ -10,54 +19,181 @@ import urllib.request
 def download_file(url, dest):
     try:
         urllib.request.urlretrieve(url, dest)
-        return True
     except Exception as e:
         st.error(f"Error downloading {url}: {e}")
-        return False
 
 # URLs for model files on GitHub
-stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
+rf_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/rf_model.pkl'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
 # Local paths for models
-stacking_model_path = 'stacking_genai_model.pkl'
+rf_model_path = 'rf_model.pkl'
 
 # Download models if they don’t exist
-if not os.path.exists(stacking_model_path):
-    st.info(f"Downloading {stacking_model_path}...")
-    download_file(stacking_model_url, stacking_model_path)
+if not os.path.exists(rf_model_path):
+    st.info(f"Downloading {rf_model_path}...")
+    download_file(rf_model_url, rf_model_path)
 
-# Load the stacking model
-@st.cache(allow_output_mutation=True)
-def load_stacking_model():
+# Load the Random Forest model
+@st.cache_resource
+def load_rf_model():
     try:
-        # Load the content of the .pkl file
-        loaded_object = joblib.load(stacking_model_path)
-        
-        if isinstance(loaded_object, dict):
-            if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
-                meta_model = loaded_object['gen_stacking_meta_model']
-                base_models = {
-                    'rf': loaded_object.get('rf_model'),
-                    'xgb': loaded_object.get('xgb_model'),
-                }
-                return {'meta_model': meta_model, 'base_models': base_models}
-            else:
-                st.error("No valid 'gen_stacking_meta_model' found.")
-                return None
-        else:
-            st.error(f"Loaded object is of type {type(loaded_object)} and not a dictionary.")
-            return None
+        model = joblib.load("rf_model.pkl")
+        return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
-stacking_model = load_stacking_model()
+rf_model = load_rf_model()
+
+# Load dataset
+@st.cache_data
+def load_data():
+    try:
+        data = pd.read_csv(data_url)
+        data.fillna(data.mean(), inplace=True)
+        return data
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
+
+data = load_data()
 
 # Define feature columns exactly as used during training
 feature_columns = [
     'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
     'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP'
 ]
+
+# Title of the Page
+st.title("CVD Prediction App by Howard Nguyen")
+st.write("Enter your parameters and click Predict to get the results.")
+
+# Sidebar input parameters
+st.sidebar.header('Enter Your Parameters')
+
+def user_input_features():
+    user_data = {}
+    for feature in feature_columns:
+        if feature in ['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']:
+            user_data[feature] = st.sidebar.selectbox(feature, [0, 1])
+        else:
+            user_data[feature] = st.sidebar.slider(feature, float(data[feature].min()), float(data[feature].max()), float(data[feature].mean()))
+    
+    return pd.DataFrame(user_data, index=[0])
+
+input_df = user_input_features()
+
+# Ensure input_df columns match model feature order
+input_df = input_df[feature_columns]
+
+# Processing Button
+if st.button("PREDICT"):
+    if rf_model:
+        try:
+            # Prediction
+            rf_proba = rf_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
+
+            # Prediction Probability Distribution
+            st.subheader("Prediction Probability Distribution")
+            fig, ax = plt.subplots()
+            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
+            ax.set_xlim(0, 1)
+            ax.set_xlabel("Probability")
+            # Add percentage label to the bar
+            for rect in bar:
+                width = rect.get_width()
+                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
+            st.pyplot(fig)
+
+            # Model Performance
+            st.subheader("Model Performance")
+            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
+
+            # Feature Importances (Random Forest)
+            st.subheader("Feature Importances (Random Forest)")
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(range(len(indices)), importances[indices], color='blue')
+            ax.set_yticks(range(len(indices)))
+            ax.set_yticklabels([feature_columns[i] for i in indices])
+            ax.set_xlabel('Importance')
+            ax.set_title('Feature Importances (Random Forest)')
+            st.pyplot(fig)
+
+            # Notes
+            st.subheader("Notes")
+            st.write("""
+                - These predictions are for informational purposes only.
+                - Consult a healthcare professional for medical advice.
+                - The model uses a Random Forest approach with multiple features.
+            """, unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Error processing predictions or plotting: {e}")
+    else:
+        st.error("Model not loaded successfully.")
+
+import urllib.request
+
+# Define the CNN model function (only needed when loading models)
+def create_cnn_model():
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Conv1D, Flatten, Dense, Dropout, MaxPooling1D
+    
+    model = Sequential([
+        Conv1D(16, kernel_size=3, activation='relu', input_shape=(19, 1)),
+        MaxPooling1D(pool_size=2),
+        Flatten(),
+        Dense(32, activation='relu'),
+        Dropout(0.5),
+        Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    return model
+
+# Function to download a file if it doesn't exist
+def download_file(url, dest):
+    try:
+        urllib.request.urlretrieve(url, dest)
+    except Exception as e:
+        st.error(f"Error downloading {url}: {e}")
+
+# URLs for model files on GitHub
+stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/genai_stacking_model.pkl'
+cnn_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/cnn_model.h5'
+data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
+
+# Local paths for models
+stacking_model_path = 'genai_stacking_model.pkl'
+cnn_model_path = 'cnn_model.h5'
+
+# Download models if they don't exist
+if not os.path.exists(stacking_model_path):
+    st.info(f"Downloading {stacking_model_path}...")
+    download_file(stacking_model_url, stacking_model_path)
+
+if not os.path.exists(cnn_model_path):
+    st.info(f"Downloading {cnn_model_path}...")
+    download_file(cnn_model_url, cnn_model_path)
+
+# Load Random Forest model
+@st.cache_resource  # Updated caching to avoid deprecation warning
+def load_rf_model():
+    try:
+        model = joblib.load("rf_model.pkl")
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
+
+rf_model = load_rf_model()
+
+# Define feature columns exactly as used during training
+feature_columns = ['SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
+                   'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']
 
 # Title of the Page
 st.title("CVD Prediction App by Howard Nguyen")
@@ -98,46 +234,49 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Processing Button
 if st.button("Predict"):
-    if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
-        st.error("Cannot make predictions: Model or base models failed to load.")
-    else:
+    if rf_model:
         try:
-            # Generate predictions from base models
-            meta_features = []
-            for model_name, base_model in stacking_model['base_models'].items():
-                if base_model is not None and hasattr(base_model, 'predict_proba'):
-                    proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
-                    meta_features.append(proba)
-                else:
-                    st.error(f"Base model {model_name} is None or does not support predict_proba.")
-                    raise Exception("Invalid base model.")
-
-            # Combine into a single input for the meta-model
-            meta_input = np.column_stack(meta_features)
-
-            # Prediction using meta-model
-            meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
-            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
+            # Prediction moved right below the title
+            rf_proba = rf_model.predict_proba(input_df)[:, 1]
+            st.write(f"**Random Forest Prediction: CVD Risk Probability = {rf_proba[0]:.2f}**")
 
             # Prediction Probability Distribution
             st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots()
-            ax.barh(["Stacking Model"], [meta_proba[0]], color="red")
+            bar = ax.barh(["Random Forest"], [rf_proba[0]], color="blue")
             ax.set_xlim(0, 1)
             ax.set_xlabel("Probability")
+            # Add percentage label to the bar
+            for rect in bar:
+                width = rect.get_width()
+                ax.text(width + 0.01, rect.get_y() + rect.get_height()/2, f"{width*100:.0f}%", va="center")
             st.pyplot(fig)
 
-            # Feature Importance Plot using Random Forest
-            st.subheader("Feature Importance / Risk Factors (Random Forest)")
-            rf_model = stacking_model['base_models']['rf']
-            if hasattr(rf_model, 'feature_importances_'):
-                importances = rf_model.feature_importances_
-                indices = np.argsort(importances)[::-1]  
-                fig2, ax2 = plt.subplots()
-                ax2.barh([feature_columns[i] for i in indices], importances[indices], color="green")
-                ax2.set_xlabel("Importance")
-                ax2.invert_yaxis()
-                st.pyplot(fig2)
+            # Model Performance
+            st.subheader("Model Performance")
+            st.write("The model has been evaluated on a test dataset with an AUC of 0.96.")
+
+            # Feature Importances (Random Forest)
+            st.subheader("Feature Importances (Random Forest)")
+            importances = rf_model.feature_importances_
+            indices = np.argsort(importances)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(range(len(indices)), importances[indices], color='blue')
+            ax.set_yticks(range(len(indices)))
+            ax.set_yticklabels([feature_columns[i] for i in indices])
+            ax.set_xlabel('Importance')
+            ax.set_title('Feature Importances (Random Forest)')
+            st.pyplot(fig)
+
+            # Notes
+            st.subheader("Notes")
+            st.write("""
+                - These predictions are for informational purposes only.
+                - Consult a healthcare professional for medical advice.
+                - The model uses a Random Forest approach with multiple features.
+            """, unsafe_allow_html=True)
 
         except Exception as e:
-            st.error(f"Error processing predictions: {e}")
+            st.error(f"Error processing predictions or plotting: {e}")
+    else:
+        st.error("Model not loaded successfully.")
