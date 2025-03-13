@@ -6,133 +6,138 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 
-# Function to download model files from GitHub
+# Function to download a file if it doesn’t exist
 def download_file(url, dest):
     try:
         urllib.request.urlretrieve(url, dest)
+        return True
     except Exception as e:
         st.error(f"Error downloading {url}: {e}")
+        return False
 
-# GitHub URLs for model files
+# URLs for model files on GitHub
 stacking_model_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/stacking_genai_model.pkl'
-data_url = 'https://raw.githubusercontent.com/HowardHNguyen/genai/main/frmgham2.csv'
 
-# Local paths
+# Local paths for models
 stacking_model_path = 'stacking_genai_model.pkl'
 
-# Download models if they don't exist
+# Download models if they don’t exist
 if not os.path.exists(stacking_model_path):
     st.info(f"Downloading {stacking_model_path}...")
     download_file(stacking_model_url, stacking_model_path)
 
 # Load the stacking model
-@st.cache_resource
+@st.cache(allow_output_mutation=True)
 def load_stacking_model():
     try:
-        model = joblib.load("stacking_genai_model.pkl")
-        if 'gen_stacking_meta_model' not in model:
-            raise KeyError("Missing 'gen_stacking_meta_model' in loaded stacking model.")
-        return model
+        # Load the content of the .pkl file
+        loaded_object = joblib.load(stacking_model_path)
+        
+        if isinstance(loaded_object, dict):
+            if 'gen_stacking_meta_model' in loaded_object and hasattr(loaded_object['gen_stacking_meta_model'], 'predict_proba'):
+                meta_model = loaded_object['gen_stacking_meta_model']
+                base_models = {
+                    'rf': loaded_object.get('rf_model'),
+                    'xgb': loaded_object.get('xgb_model'),
+                }
+                return {'meta_model': meta_model, 'base_models': base_models}
+            else:
+                st.error("No valid 'gen_stacking_meta_model' found.")
+                return None
+        else:
+            st.error(f"Loaded object is of type {type(loaded_object)} and not a dictionary.")
+            return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
         return None
 
 stacking_model = load_stacking_model()
 
-# Load dataset
-@st.cache_data
-def load_data():
-    try:
-        data = pd.read_csv(data_url)
-        data.fillna(data.mean(), inplace=True)
-        return data
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return None
-
-data = load_data()
-
-# Define feature columns (ensure they match training order)
+# Define feature columns exactly as used during training
 feature_columns = [
     'SEX', 'AGE', 'educ', 'CURSMOKE', 'CIGPDAY', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'HEARTRTE',
     'GLUCOSE', 'HDLC', 'LDLC', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP'
 ]
 
-# Sidebar inputs
-st.sidebar.header('Enter Your Parameters')
-def user_input_features():
-    user_data = {}
-    for feature in feature_columns:
-        if feature in ['SEX', 'CURSMOKE', 'DIABETES', 'BPMEDS', 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP']:
-            user_data[feature] = st.sidebar.selectbox(feature, [0, 1])
-        else:
-            user_data[feature] = st.sidebar.slider(feature, float(data[feature].min()), float(data[feature].max()), float(data[feature].mean()))
+# Title of the Page
+st.title("CVD Prediction App by Howard Nguyen")
+st.write("Enter your parameters and click Predict to get the results.")
 
-    return pd.DataFrame(user_data, index=[0])
+# Sidebar for user input
+st.sidebar.header("Enter Your Parameters")
+sex = st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=0)
+age = st.sidebar.slider("AGE", 32.0, 81.0, 54.79)
+educ = st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 1.99)
+cursmoke = st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=1)
+cigpday = st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0)
+totchol = st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 241.16)
+sysbp = st.sidebar.slider("Systolic BP", 83.5, 295.0, 136.32)
+diabp = st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0)
+bmi = st.sidebar.slider("BMI", 15.0, 59.0, 25.68)
+heartrte = st.sidebar.slider("Heart Rate", 40.0, 120.0, 75.0)
+glucose = st.sidebar.slider("Glucose", 50.0, 360.0, 50.0)
+hdlc = st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 50.0)
+ldlc = st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 50.0)
+diabetes = st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0)
+bpmeds = st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0)
+prevchd = st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0)
+prevap = st.sidebar.selectbox("PREVAP (0 = No, 1 = Yes)", [0, 1], index=0)
+prevmi = st.sidebar.selectbox("PREVMI (0 = No, 1 = Yes)", [0, 1], index=0)
+prevstrk = st.sidebar.selectbox("PREVSTRK (0 = No, 1 = Yes)", [0, 1], index=0)
+prevhyp = st.sidebar.selectbox("PREVHYP (0 = No, 1 = Yes)", [0, 1], index=0)
 
-input_df = user_input_features()
+# Prepare input data
+user_data = {
+    'SEX': sex, 'AGE': age, 'educ': educ, 'CURSMOKE': cursmoke, 'CIGPDAY': cigpday,
+    'TOTCHOL': totchol, 'SYSBP': sysbp, 'DIABP': diabp, 'BMI': bmi, 'HEARTRTE': heartrte,
+    'GLUCOSE': glucose, 'HDLC': hdlc, 'LDLC': ldlc, 'DIABETES': diabetes, 'BPMEDS': bpmeds,
+    'PREVCHD': prevchd, 'PREVAP': prevap, 'PREVMI': prevmi, 'PREVSTRK': prevstrk,
+    'PREVHYP': prevhyp
+}
+input_df = pd.DataFrame([user_data], columns=feature_columns)
 
-# Ensure input_df columns match model feature order
-input_df = input_df[feature_columns]
-
-# Predict
-if st.sidebar.button('Predict'):
-    if stacking_model:
+# Processing Button
+if st.button("Predict"):
+    if stacking_model is None or 'meta_model' not in stacking_model or 'base_models' not in stacking_model:
+        st.error("Cannot make predictions: Model or base models failed to load.")
+    else:
         try:
-            rf_proba = stacking_model['rf_model'].predict_proba(input_df)[:, 1]
-            xgb_proba = stacking_model['xgb_model'].predict_proba(input_df)[:, 1]
+            # Generate predictions from base models
+            meta_features = []
+            for model_name, base_model in stacking_model['base_models'].items():
+                if base_model is not None and hasattr(base_model, 'predict_proba'):
+                    proba = base_model.predict_proba(input_df)[:, 1]  # Probability of positive class
+                    meta_features.append(proba)
+                else:
+                    st.error(f"Base model {model_name} is None or does not support predict_proba.")
+                    raise Exception("Invalid base model.")
 
-            # Combine predictions for meta-model
-            meta_input = np.column_stack([rf_proba, xgb_proba])
+            # Combine into a single input for the meta-model
+            meta_input = np.column_stack(meta_features)
 
-            # Ensure meta_model is correctly used
-            meta_model = stacking_model['gen_stacking_meta_model']
-            stacking_proba = meta_model.predict_proba(meta_input)[:, 1]
+            # Prediction using meta-model
+            meta_proba = stacking_model['meta_model'].predict_proba(meta_input)[:, 1]
+            st.write(f"**Stacking Model Prediction: CVD Risk Probability = {meta_proba[0]:.2f}**")
 
-            st.subheader('Predictions')
-            st.write(f"Stacking Model Prediction: CVD with probability {stacking_proba[0]:.2f}")
-
-            # Plot probability distribution
+            # Prediction Probability Distribution
+            st.subheader("Prediction Probability Distribution")
             fig, ax = plt.subplots()
-            ax.bar(['Stacking Model'], [stacking_proba[0]], color='blue')
-            ax.set_ylim(0, 1)
-            ax.set_ylabel('Probability')
+            ax.barh(["Stacking Model"], [meta_proba[0]], color="red")
+            ax.set_xlim(0, 1)
+            ax.set_xlabel("Probability")
             st.pyplot(fig)
 
+            # Feature Importance Plot using Random Forest
+            st.subheader("Feature Importance / Risk Factors (Random Forest)")
+            rf_model = stacking_model['base_models']['rf']
+            if hasattr(rf_model, 'feature_importances_'):
+                importances = rf_model.feature_importances_
+                indices = np.argsort(importances)[::-1]  
+                fig2, ax2 = plt.subplots()
+                ax2.barh([feature_columns[i] for i in indices], importances[indices], color="green")
+                ax2.set_xlabel("Importance")
+                ax2.invert_yaxis()
+                st.pyplot(fig2)
+
         except Exception as e:
-            st.error(f"Error making predictions: {e}")
-    else:
-        st.error("Model could not be loaded.")
-
-    # Feature Importance (XGBoost)
-    st.subheader('Feature Importances (XGBoost)')
-    try:
-        xgb_model = stacking_model['xgb_model']
-        importances = xgb_model.feature_importances_
-        fig, ax = plt.subplots()
-        indices = np.argsort(importances)
-        ax.barh(range(len(indices)), importances[indices], color='blue', align='center')
-        ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels([feature_columns[i] for i in indices])
-        ax.set_xlabel('Importance')
-        st.pyplot(fig)
-    except Exception as e:
-        st.error(f"Error plotting feature importances: {e}")
-
-    # ROC Curve
-    st.subheader('Model Performance')
-    try:
-        fpr, tpr, _ = roc_curve(data['CVD'], stacking_proba)
-        fig, ax = plt.subplots()
-        ax.plot(fpr, tpr, label=f'Stacking Model (AUC = {roc_auc_score(data["CVD"], stacking_proba):.2f})')
-        ax.plot([0, 1], [0, 1], 'k--')
-        ax.set_xlabel('False Positive Rate')
-        ax.set_ylabel('True Positive Rate')
-        ax.legend(loc='best')
-        st.pyplot(fig)
-    except Exception as e:
-        st.error(f"Error plotting ROC curve: {e}")
-
-else:
-    st.write("## Cardiovascular Disease Prediction App")
-    st.write("### Enter your parameters and click Predict to get the results.")
+            st.error(f"Error processing predictions: {e}")
