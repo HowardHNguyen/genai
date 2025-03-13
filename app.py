@@ -107,7 +107,7 @@ input_df = pd.DataFrame([user_data], columns=feature_columns)
 
 # Scale input data using the loaded scaler
 input_df_scaled = scaler.transform(input_df)
-st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
+# st.write("Scaled Input Values:", input_df_scaled[0])  # Debug: Show scaled input
 
 # Processing Button
 if st.button("Predict"):
