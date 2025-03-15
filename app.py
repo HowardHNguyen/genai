@@ -77,17 +77,17 @@ st.sidebar.header("📋 Input Your Health Metrics")
 user_data = {
     'SEX': st.sidebar.selectbox("SEX (0 = Female, 1 = Male)", [0, 1], index=1),
     'AGE': st.sidebar.slider("AGE", 32.0, 81.0, 35.0),
-    'educ': st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 2.00),
+    'educ': st.sidebar.slider("Education Level (educ)", 1.0, 4.0, 3.0),
     'CURSMOKE': st.sidebar.selectbox("Current Smoker (0 = No, 1 = Yes)", [0, 1], index=0),
     'CIGPDAY': st.sidebar.slider("Cigarettes per Day", 0.0, 90.0, 0.0),
-    'TOTCHOL': st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 195.00),
-    'SYSBP': st.sidebar.slider("Systolic BP", 83.5, 295.0, 120.00),
-    'DIABP': st.sidebar.slider("Diastolic BP", 30.0, 159.0, 80.0),
-    'BMI': st.sidebar.slider("BMI", 15.0, 59.0, 25.68),
-    'HEARTRTE': st.sidebar.slider("Heart Rate", 40.0, 120.0, 60.0),
-    'GLUCOSE': st.sidebar.slider("Glucose", 50.0, 360.0, 90.0),
-    'HDLC': st.sidebar.slider("HDL Cholesterol", 20.0, 100.0, 45.0),
-    'LDLC': st.sidebar.slider("LDL Cholesterol", 20.0, 300.0, 99.0),
+    'TOTCHOL': st.sidebar.slider("Total Cholesterol", 107.0, 696.0, 195.0),
+    'SYSBP': st.sidebar.slider("Systolic BP", 83.5, 295.0, 120.0),
+    'DIABP': st.sidebar.slider("Diastolic BP", 30.0, 150.0, 80.0),
+    'BMI': st.sidebar.slider("BMI", 15.0, 56.8, 24.8),
+    'HEARTRTE': st.sidebar.slider("Heart Rate", 37.0, 220.0, 60.0),
+    'GLUCOSE': st.sidebar.slider("Glucose", 39.0, 478.0, 90.0),
+    'HDLC': st.sidebar.slider("HDL Cholesterol", 10.0, 189.0, 60.0),
+    'LDLC': st.sidebar.slider("LDL Cholesterol", 20.0, 565.0, 98.0),
     'DIABETES': st.sidebar.selectbox("Diabetes (0 = No, 1 = Yes)", [0, 1], index=0),
     'BPMEDS': st.sidebar.selectbox("BP Meds (0 = No, 1 = Yes)", [0, 1], index=0),
     'PREVCHD': st.sidebar.selectbox("Prev CHD (0 = No, 1 = Yes)", [0, 1], index=0),
@@ -140,7 +140,7 @@ if st.button("🔍 Predict Risk"):
             """)
 
             # Data Information Notes 
-            st.subheader("Data Information")
+            st.subheader("📌 Predictive Notes")
             st.write("""
                      Predictive models aim to forecast the likelihood or timing of outcomes (e.g., cardiovascular disease, stroke) based on baseline data. The Framingham study is renowned for cardiovascular risk assessment, so predictors should be relevant to such outcomes. All baseline characteristics are potential predictors because they provide information about risk factors:
                      - 'SEX': Gender differences affect disease risk.
@@ -155,6 +155,18 @@ if st.button("🔍 Predict Risk"):
                      - 'GLUCOSE': Elevated levels indicate metabolic issues.
                      - 'educ': Socioeconomic status influences health outcomes.
                      - 'PREVCHD', 'PREVAP', 'PREVMI', 'PREVSTRK', 'PREVHYP': Prior events strongly predict future events.
+            """, unsafe_allow_html=True)
+
+            # Data Information Notes 
+            st.subheader("📌 Preventive Notes")
+            st.write("""
+                     Preventive attributes are modifiable risk factors. While all predictors contribute to risk assessment, the following are directly modifiable or indicate conditions amenable to intervention:
+                     - 'CURSMOKE', 'CIGPDAY': Smoking cessation reduces risk.
+                     - 'SYSBP', 'DIABP', 'BPMEDS': Blood pressure can be managed with lifestyle changes or medication.
+                     - 'TOTCHOL', 'HDLC', 'LDLC': Cholesterol levels can be altered via diet, exercise, or drugs.
+                     - 'BMI': Weight loss improves health outcomes.
+                     - 'GLUCOSE', 'DIABETES': Glucose control prevents diabetes progression.
+                     - 'HEARTRTE': Exercise can improve resting heart rate.
             """, unsafe_allow_html=True)
 
         except Exception as e:
